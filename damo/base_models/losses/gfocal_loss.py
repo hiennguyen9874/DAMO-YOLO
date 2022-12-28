@@ -58,13 +58,9 @@ def weighted_loss(loss_func):
     >>> l1_loss(pred, target, weight, avg_factor=2)
     tensor(1.5000)
     """
+
     @functools.wraps(loss_func)
-    def wrapper(pred,
-                target,
-                weight=None,
-                reduction='mean',
-                avg_factor=None,
-                **kwargs):
+    def wrapper(pred, target, weight=None, reduction="mean", avg_factor=None, **kwargs):
         # get element-wise loss
         loss = loss_func(pred, target, **kwargs)
         loss = weight_reduce_loss(loss, weight, reduction, avg_factor)
@@ -73,7 +69,7 @@ def weighted_loss(loss_func):
     return wrapper
 
 
-def weight_reduce_loss(loss, weight=None, reduction='mean', avg_factor=None):
+def weight_reduce_loss(loss, weight=None, reduction="mean", avg_factor=None):
     """Apply element-wise weight and reduce loss.
     Args:
         loss (Tensor): Element-wise loss.
@@ -92,10 +88,10 @@ def weight_reduce_loss(loss, weight=None, reduction='mean', avg_factor=None):
         loss = reduce_loss(loss, reduction)
     else:
         # if reduction is mean, then average the loss by avg_factor
-        if reduction == 'mean':
+        if reduction == "mean":
             loss = loss.sum() / avg_factor
         # if reduction is 'none', then do nothing, otherwise raise an error
-        elif reduction != 'none':
+        elif reduction != "none":
             raise ValueError('avg_factor can not be used with reduction="sum"')
     return loss
 
@@ -112,45 +108,36 @@ def giou_loss(pred, target, eps=1e-7):
     Return:
         Tensor: Loss tensor.
     """
-    gious = bbox_overlaps(pred, target, mode='giou', is_aligned=True, eps=eps)
+    gious = bbox_overlaps(pred, target, mode="giou", is_aligned=True, eps=eps)
     loss = 1 - gious
     return loss
 
 
 class GIoULoss(nn.Module):
-    def __init__(self, eps=1e-6, reduction='mean', loss_weight=1.0):
+    def __init__(self, eps=1e-6, reduction="mean", loss_weight=1.0):
         super(GIoULoss, self).__init__()
         self.eps = eps
         self.reduction = reduction
         self.loss_weight = loss_weight
 
-    def forward(self,
-                pred,
-                target,
-                weight=None,
-                avg_factor=None,
-                reduction_override=None,
-                **kwargs):
+    def forward(
+        self, pred, target, weight=None, avg_factor=None, reduction_override=None, **kwargs
+    ):
         if weight is not None and not torch.any(weight > 0):
             if pred.dim() == weight.dim() + 1:
                 weight = weight.unsqueeze(1)
             return (pred * weight).sum()  # 0
-        assert reduction_override in (None, 'none', 'mean', 'sum')
-        reduction = (reduction_override
-                     if reduction_override else self.reduction)
+        assert reduction_override in (None, "none", "mean", "sum")
+        reduction = reduction_override if reduction_override else self.reduction
         if weight is not None and weight.dim() > 1:
             # TODO: remove this in the future
             # reduce the weight of shape (n, 4) to (n,) to match the
             # giou_loss of shape (n,)
             assert weight.shape == pred.shape
             weight = weight.mean(-1)
-        loss = self.loss_weight * giou_loss(pred,
-                                            target,
-                                            weight,
-                                            eps=self.eps,
-                                            reduction=reduction,
-                                            avg_factor=avg_factor,
-                                            **kwargs)
+        loss = self.loss_weight * giou_loss(
+            pred, target, weight, eps=self.eps, reduction=reduction, avg_factor=avg_factor, **kwargs
+        )
         return loss
 
 
@@ -172,8 +159,10 @@ def distribution_focal_loss(pred, label):
     dis_right = dis_left + 1
     weight_left = dis_right.float() - label
     weight_right = label - dis_left.float()
-    loss = F.cross_entropy(pred, dis_left, reduction='none') * weight_left \
-        + F.cross_entropy(pred, dis_right, reduction='none') * weight_right
+    loss = (
+        F.cross_entropy(pred, dis_left, reduction="none") * weight_left
+        + F.cross_entropy(pred, dis_right, reduction="none") * weight_right
+    )
     return loss
 
 
@@ -185,17 +174,13 @@ class DistributionFocalLoss(nn.Module):
         reduction (str): Options are `'none'`, `'mean'` and `'sum'`.
         loss_weight (float): Loss weight of current loss.
     """
-    def __init__(self, reduction='mean', loss_weight=1.0):
+
+    def __init__(self, reduction="mean", loss_weight=1.0):
         super(DistributionFocalLoss, self).__init__()
         self.reduction = reduction
         self.loss_weight = loss_weight
 
-    def forward(self,
-                pred,
-                target,
-                weight=None,
-                avg_factor=None,
-                reduction_override=None):
+    def forward(self, pred, target, weight=None, avg_factor=None, reduction_override=None):
         """Forward function.
         Args:
             pred (torch.Tensor): Predicted general distribution of bounding
@@ -211,11 +196,11 @@ class DistributionFocalLoss(nn.Module):
                 override the original reduction method of the loss.
                 Defaults to None.
         """
-        assert reduction_override in (None, 'none', 'mean', 'sum')
-        reduction = (reduction_override
-                     if reduction_override else self.reduction)
+        assert reduction_override in (None, "none", "mean", "sum")
+        reduction = reduction_override if reduction_override else self.reduction
         loss_cls = self.loss_weight * distribution_focal_loss(
-            pred, target, weight, reduction=reduction, avg_factor=avg_factor)
+            pred, target, weight, reduction=reduction, avg_factor=avg_factor
+        )
         return loss_cls
 
 
@@ -235,7 +220,9 @@ def quality_focal_loss(pred, target, beta=2.0, use_sigmoid=True):
     Returns:
         torch.Tensor: Loss tensor with shape (N,).
     """
-    assert len(target) == 2, """target for QFL must be a tuple of two elements,
+    assert (
+        len(target) == 2
+    ), """target for QFL must be a tuple of two elements,
         including category label and quality label, respectively"""
     # label denotes the category id, score denotes the quality score
     label, score = target
@@ -247,17 +234,16 @@ def quality_focal_loss(pred, target, beta=2.0, use_sigmoid=True):
     pred_sigmoid = pred.sigmoid() if use_sigmoid else pred
     scale_factor = pred_sigmoid  # 8400, 81
     zerolabel = scale_factor.new_zeros(pred.shape)
-    loss = func(pred, zerolabel, reduction='none') * scale_factor.pow(beta)
+    loss = func(pred, zerolabel, reduction="none") * scale_factor.pow(beta)
 
     bg_class_ind = pred.size(1)
-    pos = ((label >= 0) &
-           (label < bg_class_ind)).nonzero(as_tuple=False).squeeze(1)
+    pos = ((label >= 0) & (label < bg_class_ind)).nonzero(as_tuple=False).squeeze(1)
     pos_label = label[pos].long()
     # positives are supervised by bbox quality (IoU) score
     scale_factor = score[pos] - pred_sigmoid[pos, pos_label]
-    loss[pos,
-         pos_label] = func(pred[pos, pos_label], score[pos],
-                           reduction='none') * scale_factor.abs().pow(beta)
+    loss[pos, pos_label] = func(
+        pred[pos, pos_label], score[pos], reduction="none"
+    ) * scale_factor.abs().pow(beta)
 
     loss = loss.sum(dim=1, keepdim=False)
     return loss
@@ -275,11 +261,8 @@ class QualityFocalLoss(nn.Module):
         reduction (str): Options are "none", "mean" and "sum".
         loss_weight (float): Loss weight of current loss.
     """
-    def __init__(self,
-                 use_sigmoid=True,
-                 beta=2.0,
-                 reduction='mean',
-                 loss_weight=1.0):
+
+    def __init__(self, use_sigmoid=True, beta=2.0, reduction="mean", loss_weight=1.0):
         super(QualityFocalLoss, self).__init__()
         # assert use_sigmoid is True, 'Only sigmoid in QFL supported now.'
         self.use_sigmoid = use_sigmoid
@@ -287,12 +270,7 @@ class QualityFocalLoss(nn.Module):
         self.reduction = reduction
         self.loss_weight = loss_weight
 
-    def forward(self,
-                pred,
-                target,
-                weight=None,
-                avg_factor=None,
-                reduction_override=None):
+    def forward(self, pred, target, weight=None, avg_factor=None, reduction_override=None):
         """Forward function.
         Args:
             pred (torch.Tensor): Predicted joint representation of
@@ -308,9 +286,8 @@ class QualityFocalLoss(nn.Module):
                 override the original reduction method of the loss.
                 Defaults to None.
         """
-        assert reduction_override in (None, 'none', 'mean', 'sum')
-        reduction = (reduction_override
-                     if reduction_override else self.reduction)
+        assert reduction_override in (None, "none", "mean", "sum")
+        reduction = reduction_override if reduction_override else self.reduction
         loss_cls = self.loss_weight * quality_focal_loss(
             pred,
             target,
@@ -318,5 +295,6 @@ class QualityFocalLoss(nn.Module):
             beta=self.beta,
             use_sigmoid=self.use_sigmoid,
             reduction=reduction,
-            avg_factor=avg_factor)
+            avg_factor=avg_factor,
+        )
         return loss_cls

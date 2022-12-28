@@ -10,8 +10,17 @@ from damo.augmentations.box_level_augs.geometric_augs import geometric_aug_func
 
 
 class SA_Aug(object):
-    def __init__(self, iters_per_epoch, start_epoch, total_epochs,
-                 no_aug_epochs, batch_size, num_gpus, num_workers, sada_cfg):
+    def __init__(
+        self,
+        iters_per_epoch,
+        start_epoch,
+        total_epochs,
+        no_aug_epochs,
+        batch_size,
+        num_gpus,
+        num_workers,
+        sada_cfg,
+    ):
 
         autoaug_list = sada_cfg.autoaug_params
         num_policies = sada_cfg.num_subpolicies
@@ -33,36 +42,40 @@ class SA_Aug(object):
             _start_pos = i * 6
             sub_policy = [
                 (
-                    color_aug_types[box_aug_list[_start_pos + 0] %
-                                    len(color_aug_types)],
+                    color_aug_types[box_aug_list[_start_pos + 0] % len(color_aug_types)],
                     box_aug_list[_start_pos + 1] * 0.1,
                     box_aug_list[_start_pos + 2],
                 ),  # box_color policy
-                (geometric_aug_types[box_aug_list[_start_pos + 3] %
-                                     len(geometric_aug_types)],
-                 box_aug_list[_start_pos + 4] * 0.1,
-                 box_aug_list[_start_pos + 5])
+                (
+                    geometric_aug_types[box_aug_list[_start_pos + 3] % len(geometric_aug_types)],
+                    box_aug_list[_start_pos + 4] * 0.1,
+                    box_aug_list[_start_pos + 5],
+                ),
             ]  # box_geometric policy
             policies.append(sub_policy)
 
         _start_pos = num_policies * 6
         scale_ratios = {
-            'area': [
-                box_aug_list[_start_pos + 0], box_aug_list[_start_pos + 1],
-                box_aug_list[_start_pos + 2]
+            "area": [
+                box_aug_list[_start_pos + 0],
+                box_aug_list[_start_pos + 1],
+                box_aug_list[_start_pos + 2],
             ],
-            'prob': [
-                box_aug_list[_start_pos + 3], box_aug_list[_start_pos + 4],
-                box_aug_list[_start_pos + 5]
-            ]
+            "prob": [
+                box_aug_list[_start_pos + 3],
+                box_aug_list[_start_pos + 4],
+                box_aug_list[_start_pos + 5],
+            ],
         }
 
-        box_augs_dict = {'policies': policies, 'scale_ratios': scale_ratios}
+        box_augs_dict = {"policies": policies, "scale_ratios": scale_ratios}
 
-        self.box_augs = Box_augs(box_augs_dict=box_augs_dict,
-                                 max_iters=self.max_iters,
-                                 scale_splits=scale_splits,
-                                 box_prob=box_prob)
+        self.box_augs = Box_augs(
+            box_augs_dict=box_augs_dict,
+            max_iters=self.max_iters,
+            scale_splits=scale_splits,
+            box_prob=box_prob,
+        )
 
     def __call__(self, tensor, target):
         iteration = self.count // self.batch_size * self.num_workers

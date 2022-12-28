@@ -17,11 +17,13 @@ class GroupedBatchSampler(BatchSampler):
         drop_uneven (bool): If ``True``, the sampler will drop the batches
             whose size is less than ``batch_size``
     """
+
     def __init__(self, sampler, group_ids, batch_size, drop_uneven=False):
         if not isinstance(sampler, Sampler):
             raise ValueError(
-                'sampler should be an instance of '
-                'torch.utils.data.Sampler, but got sampler={}'.format(sampler))
+                "sampler should be an instance of "
+                "torch.utils.data.Sampler, but got sampler={}".format(sampler)
+            )
         self.sampler = sampler
         self.group_ids = torch.as_tensor(group_ids)
         assert self.group_ids.dim() == 1
@@ -43,7 +45,7 @@ class GroupedBatchSampler(BatchSampler):
         # order where the element was sampled.
         # for example. if sampled_ids = [3, 1] and dataset_size = 5,
         # the order is [-1, 1, -1, 0, -1]
-        order = torch.full((dataset_size, ), -1, dtype=torch.int64)
+        order = torch.full((dataset_size,), -1, dtype=torch.int64)
         order[sampled_ids] = torch.arange(len(sampled_ids))
 
         # get a mask with the elements that were sampled
@@ -74,13 +76,11 @@ class GroupedBatchSampler(BatchSampler):
         first_element_of_batch = [t[0].item() for t in merged]
         # get and inverse mapping from sampled indices and the position where
         # they occur (as returned by the sampler)
-        inv_sampled_ids_map = {
-            v: k
-            for k, v in enumerate(sampled_ids.tolist())
-        }
+        inv_sampled_ids_map = {v: k for k, v in enumerate(sampled_ids.tolist())}
         # from the first element in each batch, get a relative ordering
         first_index_of_batch = torch.as_tensor(
-            [inv_sampled_ids_map[s] for s in first_element_of_batch])
+            [inv_sampled_ids_map[s] for s in first_element_of_batch]
+        )
 
         # permute the batches so that they approximately follow the order
         # from the sampler
@@ -106,7 +106,7 @@ class GroupedBatchSampler(BatchSampler):
         return iter(batches)
 
     def __len__(self):
-        if not hasattr(self, '_batches'):
+        if not hasattr(self, "_batches"):
             self._batches = self._prepare_batches()
             self._can_reuse_batches = True
         return len(self._batches)

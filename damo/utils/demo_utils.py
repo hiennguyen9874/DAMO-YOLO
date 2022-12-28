@@ -8,9 +8,7 @@ import numpy as np
 from damo.dataset.transforms import transforms as T
 from damo.structures.image_list import to_image_list
 
-__all__ = [
-    'mkdir', 'nms', 'multiclass_nms', 'demo_postprocess', 'transform_img'
-]
+__all__ = ["mkdir", "nms", "multiclass_nms", "demo_postprocess", "transform_img"]
 
 
 def mkdir(path):
@@ -63,8 +61,7 @@ def multiclass_nms(boxes, scores, nms_thr, score_thr):
             keep = nms(valid_boxes, valid_scores, nms_thr)
             if len(keep) > 0:
                 cls_inds = np.ones((len(keep), 1)) * cls_ind
-                dets = np.concatenate(
-                    [valid_boxes[keep], valid_scores[keep, None], cls_inds], 1)
+                dets = np.concatenate([valid_boxes[keep], valid_scores[keep, None], cls_inds], 1)
                 final_dets.append(dets)
     if len(final_dets) == 0:
         return None
@@ -99,8 +96,7 @@ def demo_postprocess(outputs, img_size, p6=False):
     return outputs
 
 
-def transform_img(origin_img, size_divisibility, image_max_range, flip_prob,
-                  image_mean, image_std):
+def transform_img(origin_img, size_divisibility, image_max_range, flip_prob, image_mean, image_std):
     transform = [
         T.Resize(image_max_range),
         T.RandomHorizontalFlip(flip_prob),

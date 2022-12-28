@@ -14,6 +14,7 @@ class Scale(nn.Module):
     Args:
         scale (float): Initial value of scale factor. Default: 1.0
     """
+
     def __init__(self, scale=1.0):
         super(Scale, self).__init__()
         self.scale = nn.Parameter(torch.tensor(scale, dtype=torch.float))
@@ -45,17 +46,17 @@ def unmap(data, count, inds, fill=0):
     """Unmap a subset of item (data) back to the original set of items (of size
     count)"""
     if data.dim() == 1:
-        ret = data.new_full((count, ), fill)
+        ret = data.new_full((count,), fill)
         ret[inds.type(torch.bool)] = data
     else:
-        new_size = (count, ) + data.size()[1:]
+        new_size = (count,) + data.size()[1:]
         ret = data.new_full(new_size, fill)
         ret[inds.type(torch.bool), :] = data
     return ret
 
 
 def reduce_mean(tensor):
-    """"Obtain the mean of tensor on different GPUs."""
+    """ "Obtain the mean of tensor on different GPUs."""
     if not (dist.is_available() and dist.is_initialized()):
         return tensor
     tensor = tensor.clone()

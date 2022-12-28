@@ -11,6 +11,7 @@ class ImageList(object):
     This works by padding the images to the same size,
     and storing in a field the original sizes of each image
     """
+
     def __init__(self, tensors, image_sizes, pad_sizes):
         """
         Arguments:
@@ -48,8 +49,7 @@ def to_image_list(tensors, size_divisible=0, max_size=None):
         return ImageList(tensors, image_sizes, image_sizes)
     elif isinstance(tensors, (tuple, list)):
         if max_size is None:
-            max_size = tuple(
-                max(s) for s in zip(*[img.shape for img in tensors]))
+            max_size = tuple(max(s) for s in zip(*[img.shape for img in tensors]))
         # TODO Ideally, just remove this and let me model handle arbitrary
         # input sizs
         if size_divisible > 0:
@@ -61,15 +61,14 @@ def to_image_list(tensors, size_divisible=0, max_size=None):
             max_size[2] = int(math.ceil(max_size[2] / stride) * stride)
             max_size = tuple(max_size)
 
-        batch_shape = (len(tensors), ) + max_size
+        batch_shape = (len(tensors),) + max_size
         batched_imgs = tensors[0].new(*batch_shape).zero_()  # + 114
         for img, pad_img in zip(tensors, batched_imgs):
-            pad_img[:img.shape[0], :img.shape[1], :img.shape[2]].copy_(img)
+            pad_img[: img.shape[0], : img.shape[1], : img.shape[2]].copy_(img)
 
         image_sizes = [im.shape[-2:] for im in tensors]
         pad_sizes = [batched_imgs.shape[-2:] for im in batched_imgs]
 
         return ImageList(batched_imgs, image_sizes, pad_sizes)
     else:
-        raise TypeError('Unsupported type for to_image_list: {}'.format(
-            type(tensors)))
+        raise TypeError("Unsupported type for to_image_list: {}".format(type(tensors)))

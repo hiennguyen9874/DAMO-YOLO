@@ -18,18 +18,18 @@ class Compose(object):
         return image, target
 
     def __repr__(self):
-        format_string = self.__class__.__name__ + '('
+        format_string = self.__class__.__name__ + "("
         for t in self.transforms:
-            format_string += '\n'
-            format_string += '    {0}'.format(t)
-        format_string += '\n)'
+            format_string += "\n"
+            format_string += "    {0}".format(t)
+        format_string += "\n)"
         return format_string
 
 
 class Resize(object):
     def __init__(self, max_range):
         if not isinstance(max_range, (list, tuple)):
-            max_range = (max_range, )
+            max_range = (max_range,)
         self.max_range = max_range
 
     def get_size_ratio(self, image_size):
@@ -44,8 +44,7 @@ class Resize(object):
         h, w = image.shape[:2]
         size = self.get_size_ratio((w, h))
 
-        image = cv2.resize(image, size,
-                           interpolation=cv2.INTER_LINEAR).astype(np.uint8)
+        image = cv2.resize(image, size, interpolation=cv2.INTER_LINEAR).astype(np.uint8)
         image = image.transpose((2, 0, 1))
         image = np.ascontiguousarray(image, dtype=np.float32)
         if isinstance(target, list):

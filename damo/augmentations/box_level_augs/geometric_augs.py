@@ -24,20 +24,25 @@ def scale_area(box, height, width, scale_ratio=1.0):
     return box_new
 
 
-def _geometric_aug_func(x,
-                        target,
-                        angle=0,
-                        translate=(0, 0),
-                        scale=1,
-                        shear=(0, 0),
-                        hflip=False,
-                        boxes_sample_prob=[],
-                        scale_ratio=1.0):
-    boxes_and_labels = [(
-        target.bbox[i],
-        target.extra_fields['labels'][i],
-    ) for i in range(len(target.bbox))
-                        if random.random() < boxes_sample_prob[i]]
+def _geometric_aug_func(
+    x,
+    target,
+    angle=0,
+    translate=(0, 0),
+    scale=1,
+    shear=(0, 0),
+    hflip=False,
+    boxes_sample_prob=[],
+    scale_ratio=1.0,
+):
+    boxes_and_labels = [
+        (
+            target.bbox[i],
+            target.extra_fields["labels"][i],
+        )
+        for i in range(len(target.bbox))
+        if random.random() < boxes_sample_prob[i]
+    ]
     boxes = [b_and_l[0] for b_and_l in boxes_and_labels]
     labels = [b_and_l[1] for b_and_l in boxes_and_labels]
 
@@ -67,8 +72,7 @@ def _geometric_aug_func(x,
             x_crop = x_crop.flip(-1)
         elif translate[0] + translate[1] != 0:
             offset_y = (y2 + translate[0]).clamp(0, width).long().tolist() - y2
-            offset_x = (x2 + translate[1]).clamp(0,
-                                                 height).long().tolist() - x2
+            offset_x = (x2 + translate[1]).clamp(0, height).long().tolist() - x2
             if offset_x != 0 or offset_y != 0:
                 offset = [offset_y, offset_x]
                 boxes_new.append(box + torch.Tensor(offset * 2))
@@ -82,15 +86,17 @@ def _geometric_aug_func(x,
                 scale,
                 shear,
                 resample=2,
-                fillcolor=tuple([int(i) for i in pixel_mean]))
+                fillcolor=tuple([int(i) for i in pixel_mean]),
+            )
             x_crop = transforms.functional.to_tensor(x_crop).to(x.device)
         x_crops.append(x_crop)
     y = _transform(x, x_crops, boxes_crops, translate)
 
     if translate[0] + translate[1] != 0 and len(boxes_new) > 0:
         target.bbox = torch.cat((target.bbox, torch.stack(boxes_new)))
-        target.extra_fields['labels'] = torch.cat(
-            (target.extra_fields['labels'], torch.Tensor(labels_new).long()))
+        target.extra_fields["labels"] = torch.cat(
+            (target.extra_fields["labels"], torch.Tensor(labels_new).long())
+        )
 
     return y, target
 
@@ -108,52 +114,36 @@ def _transform(x, x_crops, boxes_crops, translate=(0, 0)):
         x2_c = (x2_c + translate[1]).clamp(0, height).long().tolist()
 
         y_crop = copy.deepcopy(y[:, x1_c:x2_c, y1_c:y2_c])
-        x_crop = x_crops[i][:, :y_crop.shape[1], :y_crop.shape[2]]
+        x_crop = x_crops[i][:, : y_crop.shape[1], : y_crop.shape[2]]
 
         if y_crop.shape[1] * y_crop.shape[2] == 0:
             continue
 
-        g_maps = _gaussian_map(x_crop,
-                               [[0, 0, y_crop.shape[2], y_crop.shape[1]]])
+        g_maps = _gaussian_map(x_crop, [[0, 0, y_crop.shape[2], y_crop.shape[1]]])
         _, _h, _w = y[:, x1_c:x2_c, y1_c:y2_c].shape
-        y[:, x1_c:x1_c + x_crop.shape[1],
-          y1_c:y1_c + x_crop.shape[2]] = g_maps * x_crop + (
-              1 - g_maps) * y_crop[:, :x_crop.shape[1], :x_crop.shape[2]]
+        y[:, x1_c : x1_c + x_crop.shape[1], y1_c : y1_c + x_crop.shape[2]] = (
+            g_maps * x_crop + (1 - g_maps) * y_crop[:, : x_crop.shape[1], : x_crop.shape[2]]
+        )
     return y
 
 
 geometric_aug_func = {
-    'hflip':
-    lambda x, level, target, boxes_sample_probs: _geometric_aug_func(
-        x, target, hflip=True, boxes_sample_prob=boxes_sample_probs),
-    'rotate':
-    lambda x, level, target, boxes_sample_probs: _geometric_aug_func(
-        x,
-        target,
-        level / _MAX_LEVEL * 30,
-        boxes_sample_prob=boxes_sample_probs),
-    'shearX':
-    lambda x, level, target, boxes_sample_probs: _geometric_aug_func(
-        x,
-        target,
-        shear=(level / _MAX_LEVEL * 15, 0),
-        boxes_sample_prob=boxes_sample_probs),
-    'shearY':
-    lambda x, level, target, boxes_sample_probs: _geometric_aug_func(
-        x,
-        target,
-        shear=(0, level / _MAX_LEVEL * 15),
-        boxes_sample_prob=boxes_sample_probs),
-    'translateX':
-    lambda x, level, target, boxes_sample_probs: _geometric_aug_func(
-        x,
-        target,
-        translate=(level / _MAX_LEVEL * 120.0, 0),
-        boxes_sample_prob=boxes_sample_probs),
-    'translateY':
-    lambda x, level, target, boxes_sample_probs: _geometric_aug_func(
-        x,
-        target,
-        translate=(0, level / _MAX_LEVEL * 120.0),
-        boxes_sample_prob=boxes_sample_probs)
+    "hflip": lambda x, level, target, boxes_sample_probs: _geometric_aug_func(
+        x, target, hflip=True, boxes_sample_prob=boxes_sample_probs
+    ),
+    "rotate": lambda x, level, target, boxes_sample_probs: _geometric_aug_func(
+        x, target, level / _MAX_LEVEL * 30, boxes_sample_prob=boxes_sample_probs
+    ),
+    "shearX": lambda x, level, target, boxes_sample_probs: _geometric_aug_func(
+        x, target, shear=(level / _MAX_LEVEL * 15, 0), boxes_sample_prob=boxes_sample_probs
+    ),
+    "shearY": lambda x, level, target, boxes_sample_probs: _geometric_aug_func(
+        x, target, shear=(0, level / _MAX_LEVEL * 15), boxes_sample_prob=boxes_sample_probs
+    ),
+    "translateX": lambda x, level, target, boxes_sample_probs: _geometric_aug_func(
+        x, target, translate=(level / _MAX_LEVEL * 120.0, 0), boxes_sample_prob=boxes_sample_probs
+    ),
+    "translateY": lambda x, level, target, boxes_sample_probs: _geometric_aug_func(
+        x, target, translate=(0, level / _MAX_LEVEL * 120.0), boxes_sample_prob=boxes_sample_probs
+    ),
 }

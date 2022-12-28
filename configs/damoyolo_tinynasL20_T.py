@@ -9,8 +9,7 @@ class Config(MyConfig):
     def __init__(self):
         super(Config, self).__init__()
 
-        self.miscs.exp_name = os.path.split(
-            os.path.realpath(__file__))[1].split('.')[0]
+        self.miscs.exp_name = os.path.split(os.path.realpath(__file__))[1].split(".")[0]
         self.miscs.eval_interval_epochs = 10
         self.miscs.ckpt_interval_epochs = 10
         # optimizer
@@ -30,45 +29,46 @@ class Config(MyConfig):
         self.train.augment.mosaic_mixup.shear = 0.2
         self.train.augment.mosaic_mixup.mosaic_scale = (0.1, 2.0)
 
-        self.dataset.train_ann = ('coco_2017_train', )
-        self.dataset.val_ann = ('coco_2017_val', )
+        self.dataset.train_ann = ("coco_2017_train",)
+        self.dataset.val_ann = ("coco_2017_val",)
 
         # backbone
         structure = self.read_structure(
-            './damo/base_models/backbones/nas_backbones/tinynas_L20_k1kx.txt')
+            "./damo/base_models/backbones/nas_backbones/tinynas_L20_k1kx.txt"
+        )
         TinyNAS = {
-            'name': 'TinyNAS_res',
-            'net_structure_str': structure,
-            'out_indices': (2, 4, 5),
-            'with_spp': True,
-            'use_focus': True,
-            'act': 'relu',
-            'reparam': True,
+            "name": "TinyNAS_res",
+            "net_structure_str": structure,
+            "out_indices": (2, 4, 5),
+            "with_spp": True,
+            "use_focus": True,
+            "act": "relu",
+            "reparam": True,
         }
 
         self.model.backbone = TinyNAS
 
         GiraffeNeckV2 = {
-            'name': 'GiraffeNeckV2',
-            'depth': 1.0,
-            'hidden_ratio': 1.0,
-            'in_channels': [96, 192, 384],
-            'out_channels': [64, 128, 256],
-            'act': 'relu',
-            'spp': False,
-            'block_name': 'BasicBlock_3x3_Reverse',
+            "name": "GiraffeNeckV2",
+            "depth": 1.0,
+            "hidden_ratio": 1.0,
+            "in_channels": [96, 192, 384],
+            "out_channels": [64, 128, 256],
+            "act": "relu",
+            "spp": False,
+            "block_name": "BasicBlock_3x3_Reverse",
         }
 
         self.model.neck = GiraffeNeckV2
 
         ZeroHead = {
-            'name': 'ZeroHead',
-            'num_classes': 80,
-            'in_channels': [64, 128, 256],
-            'stacked_convs': 0,
-            'reg_max': 16,
-            'act': 'silu',
-            'nms_conf_thre': 0.05,
-            'nms_iou_thre': 0.7
+            "name": "ZeroHead",
+            "num_classes": 80,
+            "in_channels": [64, 128, 256],
+            "stacked_convs": 0,
+            "reg_max": 16,
+            "act": "silu",
+            "nms_conf_thre": 0.05,
+            "nms_iou_thre": 0.7,
         }
         self.model.head = ZeroHead

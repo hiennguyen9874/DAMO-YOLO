@@ -6,30 +6,26 @@ import torch.nn.functional as F
 
 
 class FeatureLoss(nn.Module):
-    def __init__(self,
-                 channels_s,
-                 channels_t,
-                 distiller='cwd',
-                 loss_weight=1.0):
+    def __init__(self, channels_s, channels_t, distiller="cwd", loss_weight=1.0):
         super(FeatureLoss, self).__init__()
         self.loss_weight = loss_weight
 
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.align_module = nn.ModuleList([
-            nn.Conv2d(channel, tea_channel, kernel_size=1, stride=1,
-                      padding=0).to(device)
-            for channel, tea_channel in zip(channels_s, channels_t)
-        ])
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.align_module = nn.ModuleList(
+            [
+                nn.Conv2d(channel, tea_channel, kernel_size=1, stride=1, padding=0).to(device)
+                for channel, tea_channel in zip(channels_s, channels_t)
+            ]
+        )
         self.norm = [
-            nn.BatchNorm2d(tea_channel, affine=False).to(device)
-            for tea_channel in channels_t
+            nn.BatchNorm2d(tea_channel, affine=False).to(device) for tea_channel in channels_t
         ]
 
-        if (distiller == 'mimic'):
+        if distiller == "mimic":
             self.feature_loss = MimicLoss(channels_s, channels_t)
-        elif (distiller == 'mgd'):
+        elif distiller == "mgd":
             self.feature_loss = MGDLoss(channels_s, channels_t)
-        elif (distiller == 'cwd'):
+        elif distiller == "cwd":
             self.feature_loss = CWDLoss(channels_s, channels_t)
         else:
             raise NotImplementedError
@@ -53,7 +49,7 @@ class FeatureLoss(nn.Module):
 class MimicLoss(nn.Module):
     def __init__(self, channels_s, channels_t):
         super(MimicLoss, self).__init__()
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        device = "cuda" if torch.cuda.is_available() else "cpu"
         self.mse = nn.MSELoss()
 
     def forward(self, y_s, y_t):
@@ -76,13 +72,9 @@ class MimicLoss(nn.Module):
 
 
 class MGDLoss(nn.Module):
-    def __init__(self,
-                 channels_s,
-                 channels_t,
-                 alpha_mgd=0.00002,
-                 lambda_mgd=0.65):
+    def __init__(self, channels_s, channels_t, alpha_mgd=0.00002, lambda_mgd=0.65):
         super(MGDLoss, self).__init__()
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        device = "cuda" if torch.cuda.is_available() else "cpu"
         self.alpha_mgd = alpha_mgd
         self.lambda_mgd = lambda_mgd
 
@@ -90,8 +82,9 @@ class MGDLoss(nn.Module):
             nn.Sequential(
                 nn.Conv2d(channel, channel, kernel_size=3, padding=1),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(channel, channel, kernel_size=3,
-                          padding=1)).to(device) for channel in channels_t
+                nn.Conv2d(channel, channel, kernel_size=3, padding=1),
+            ).to(device)
+            for channel in channels_t
         ]
 
     def forward(self, y_s, y_t):
@@ -113,7 +106,7 @@ class MGDLoss(nn.Module):
         return loss
 
     def get_dis_loss(self, preds_S, preds_T, idx):
-        loss_mse = nn.MSELoss(reduction='sum')
+        loss_mse = nn.MSELoss(reduction="sum")
         N, C, H, W = preds_T.shape
 
         device = preds_S.device
@@ -132,6 +125,7 @@ class CWDLoss(nn.Module):
     """PyTorch version of `Channel-wise Distillation for Semantic Segmentation.
     <https://arxiv.org/abs/2011.13256>`_.
     """
+
     def __init__(self, channels_s, channels_t, tau=1.0):
         super(CWDLoss, self).__init__()
         self.tau = tau
@@ -153,17 +147,15 @@ class CWDLoss(nn.Module):
             assert s.shape == t.shape
             N, C, H, W = s.shape
             # normalize in channel diemension
-            softmax_pred_T = F.softmax(t.view(-1, W * H) / self.tau,
-                                       dim=1)  # [N*C, H*W]
+            softmax_pred_T = F.softmax(t.view(-1, W * H) / self.tau, dim=1)  # [N*C, H*W]
 
             logsoftmax = torch.nn.LogSoftmax(dim=1)
             cost = torch.sum(
-                softmax_pred_T * logsoftmax(t.view(-1, W * H) / self.tau) -
-                softmax_pred_T * logsoftmax(s.view(-1, W * H) / self.tau)) * (
-                    self.tau**2)
+                softmax_pred_T * logsoftmax(t.view(-1, W * H) / self.tau)
+                - softmax_pred_T * logsoftmax(s.view(-1, W * H) / self.tau)
+            ) * (self.tau**2)
 
             losses.append(cost / (C * N))
         loss = sum(losses)
 
         return loss
-

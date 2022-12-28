@@ -93,11 +93,10 @@ def sharpness(image, factor):
     if image.shape[0] == 0 or image.shape[1] == 0:
         return image
     channels = image.shape[0]
-    kernel = torch.Tensor([[1, 1, 1], [1, 5, 1], [1, 1, 1]]).reshape(
-        1, 1, 3, 3) / 13.0
+    kernel = torch.Tensor([[1, 1, 1], [1, 5, 1], [1, 1, 1]]).reshape(1, 1, 3, 3) / 13.0
     kernel = kernel.repeat((3, 1, 1, 1))
     image_newaxis = image.unsqueeze(0)
-    image_pad = F.pad(image_newaxis, (1, 1, 1, 1), mode='reflect')
+    image_pad = F.pad(image_newaxis, (1, 1, 1, 1), mode="reflect")
     degenerate = F.conv2d(image_pad, weight=kernel, groups=channels).squeeze(0)
     return blend(degenerate, image, factor)
 
@@ -133,8 +132,7 @@ def equalize(image):
             result = im
         else:
             # can't index using 2d index. Have to flatten and then reshape
-            result = torch.gather(build_lut(histo, step), 0,
-                                  im.flatten().long())
+            result = torch.gather(build_lut(histo, step), 0, im.flatten().long())
             result = result.reshape_as(im)
 
         return result  # .type(torch.uint8)
@@ -189,44 +187,49 @@ def posterize(image, bits):
     return image_leftshift
 
 
-def _color_aug_func(img, img_aug, target, scale_ratios_splits,
-                    box_sample_probs):
+def _color_aug_func(img, img_aug, target, scale_ratios_splits, box_sample_probs):
     scale_ratios, scale_splits = scale_ratios_splits
-    boxes = [
-        bbox for i, bbox in enumerate(target.bbox)
-        if random.random() < box_sample_probs[i]
-    ]
+    boxes = [bbox for i, bbox in enumerate(target.bbox) if random.random() < box_sample_probs[i]]
     img_aug = _merge_gaussian(img, img_aug, boxes, scale_ratios, scale_splits)
     return img_aug
 
 
 color_aug_func = {
-    'AutoContrast':
-    lambda x, level, target,
-    scale_ratios_splits, box_sample_probs: _color_aug_func(
-        x, autocontrast(x), target, scale_ratios_splits, box_sample_probs),
-    'Equalize':
-    lambda x, leve, target,
-    scale_ratios_splits, box_sample_probs: _color_aug_func(
-        x, equalize(x), target, scale_ratios_splits, box_sample_probs),
-    'SolarizeAdd':
-    lambda x, level, target, scale_ratios_splits, box_sample_probs:
-    _color_aug_func(x, solarize_add(x, level / _MAX_LEVEL * 0.4296875), target,
-                    scale_ratios_splits, box_sample_probs),
-    'Color':
-    lambda x, level, target, scale_ratios_splits, box_sample_probs:
-    _color_aug_func(x, color(x, level / _MAX_LEVEL * 1.8 + 0.1), target,
-                    scale_ratios_splits, box_sample_probs),
-    'Contrast':
-    lambda x, level, target, scale_ratios_splits, box_sample_probs:
-    _color_aug_func(x, contrast(x, level / _MAX_LEVEL * 1.8 + 0.1), target,
-                    scale_ratios_splits, box_sample_probs),
-    'Brightness':
-    lambda x, level, target, scale_ratios_splits, box_sample_probs:
-    _color_aug_func(x, brightness(x, level / _MAX_LEVEL * 1.8 + 0.1), target,
-                    scale_ratios_splits, box_sample_probs),
-    'Sharpness':
-    lambda x, level, target, scale_ratios_splits, box_sample_probs:
-    _color_aug_func(x, sharpness(x, level / _MAX_LEVEL * 1.8 + 0.1), target,
-                    scale_ratios_splits, box_sample_probs),
+    "AutoContrast": lambda x, level, target, scale_ratios_splits, box_sample_probs: _color_aug_func(
+        x, autocontrast(x), target, scale_ratios_splits, box_sample_probs
+    ),
+    "Equalize": lambda x, leve, target, scale_ratios_splits, box_sample_probs: _color_aug_func(
+        x, equalize(x), target, scale_ratios_splits, box_sample_probs
+    ),
+    "SolarizeAdd": lambda x, level, target, scale_ratios_splits, box_sample_probs: _color_aug_func(
+        x,
+        solarize_add(x, level / _MAX_LEVEL * 0.4296875),
+        target,
+        scale_ratios_splits,
+        box_sample_probs,
+    ),
+    "Color": lambda x, level, target, scale_ratios_splits, box_sample_probs: _color_aug_func(
+        x, color(x, level / _MAX_LEVEL * 1.8 + 0.1), target, scale_ratios_splits, box_sample_probs
+    ),
+    "Contrast": lambda x, level, target, scale_ratios_splits, box_sample_probs: _color_aug_func(
+        x,
+        contrast(x, level / _MAX_LEVEL * 1.8 + 0.1),
+        target,
+        scale_ratios_splits,
+        box_sample_probs,
+    ),
+    "Brightness": lambda x, level, target, scale_ratios_splits, box_sample_probs: _color_aug_func(
+        x,
+        brightness(x, level / _MAX_LEVEL * 1.8 + 0.1),
+        target,
+        scale_ratios_splits,
+        box_sample_probs,
+    ),
+    "Sharpness": lambda x, level, target, scale_ratios_splits, box_sample_probs: _color_aug_func(
+        x,
+        sharpness(x, level / _MAX_LEVEL * 1.8 + 0.1),
+        target,
+        scale_ratios_splits,
+        box_sample_probs,
+    ),
 }

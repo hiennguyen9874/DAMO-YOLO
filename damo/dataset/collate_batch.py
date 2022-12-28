@@ -8,6 +8,7 @@ class BatchCollator(object):
     returns the batched images and targets.
     This should be passed to the DataLoader
     """
+
     def __init__(self, size_divisible=0):
         self.size_divisible = size_divisible
 
@@ -25,5 +26,6 @@ class TTACollator(object):
     returns the images and targets.
     Images should be converted to batched images in `im_detect_bbox_aug`
     """
+
     def __call__(self, batch):
         return list(zip(*batch))

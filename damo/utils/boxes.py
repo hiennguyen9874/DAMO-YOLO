@@ -10,22 +10,17 @@ import torchvision
 from damo.structures.bounding_box import BoxList
 
 __all__ = [
-    'filter_box',
-    'postprocess',
-    'bboxes_iou',
-    'matrix_iou',
-    'adjust_box_anns',
-    'xyxy2xywh',
-    'xyxy2cxcywh',
+    "filter_box",
+    "postprocess",
+    "bboxes_iou",
+    "matrix_iou",
+    "adjust_box_anns",
+    "xyxy2xywh",
+    "xyxy2cxcywh",
 ]
 
 
-def multiclass_nms(multi_bboxes,
-                   multi_scores,
-                   score_thr,
-                   iou_thr,
-                   max_num=100,
-                   score_factors=None):
+def multiclass_nms(multi_bboxes, multi_scores, score_thr, iou_thr, max_num=100, score_factors=None):
     """NMS for multi-class bboxes.
 
     Args:
@@ -49,8 +44,7 @@ def multiclass_nms(multi_bboxes,
     if multi_bboxes.shape[1] > 4:
         bboxes = multi_bboxes.view(multi_scores.size(0), -1, 4)
     else:
-        bboxes = multi_bboxes[:, None].expand(multi_scores.size(0),
-                                              num_classes, 4)
+        bboxes = multi_bboxes[:, None].expand(multi_scores.size(0), num_classes, 4)
     scores = multi_scores
     # filter out boxes with low scores
     valid_mask = scores > score_thr  # 1000 * 80 bool
@@ -61,9 +55,10 @@ def multiclass_nms(multi_bboxes,
     # we have to use this ugly code
     # bboxes -> 1000, 4
     bboxes = torch.masked_select(
-        bboxes,
-        torch.stack((valid_mask, valid_mask, valid_mask, valid_mask),
-                    -1)).view(-1, 4)  # mask->  1000*80*4, 80000*4
+        bboxes, torch.stack((valid_mask, valid_mask, valid_mask, valid_mask), -1)
+    ).view(
+        -1, 4
+    )  # mask->  1000*80*4, 80000*4
     if score_factors is not None:
         scores = scores * score_factors[:, None]
     scores = torch.masked_select(scores, valid_mask)
@@ -71,8 +66,8 @@ def multiclass_nms(multi_bboxes,
 
     if bboxes.numel() == 0:
         bboxes = multi_bboxes.new_zeros((0, 5))
-        labels = multi_bboxes.new_zeros((0, ), dtype=torch.long)
-        scores = multi_bboxes.new_zeros((0, ))
+        labels = multi_bboxes.new_zeros((0,), dtype=torch.long)
+        scores = multi_bboxes.new_zeros((0,))
 
         return bboxes, scores, labels
 
@@ -97,8 +92,8 @@ def filter_box(output, scale_range):
 
 def filter_results(boxlist, num_classes, nms_thre):
     boxes = boxlist.bbox
-    scores = boxlist.get_field('scores')
-    cls = boxlist.get_field('labels')
+    scores = boxlist.get_field("scores")
+    cls = boxlist.get_field("labels")
     nms_out_index = torchvision.ops.batched_nms(
         boxes,
         scores,
@@ -110,24 +105,19 @@ def filter_results(boxlist, num_classes, nms_thre):
     return boxlist
 
 
-def postprocess(cls_scores,
-                bbox_preds,
-                num_classes,
-                conf_thre=0.7,
-                nms_thre=0.45,
-                imgs=None):
+def postprocess(cls_scores, bbox_preds, num_classes, conf_thre=0.7, nms_thre=0.45, imgs=None):
     batch_size = bbox_preds.size(0)
     output = [None for _ in range(batch_size)]
     for i in range(batch_size):
         # If none are remaining => process next image
         if not bbox_preds[i].size(0):
             continue
-        detections, scores, labels = multiclass_nms(bbox_preds[i],
-                                                    cls_scores[i], conf_thre,
-                                                    nms_thre, 500)
-        detections = torch.cat((detections, torch.ones_like(
-            scores[:, None]), scores[:, None], labels[:, None]),
-                               dim=1)
+        detections, scores, labels = multiclass_nms(
+            bbox_preds[i], cls_scores[i], conf_thre, nms_thre, 500
+        )
+        detections = torch.cat(
+            (detections, torch.ones_like(scores[:, None]), scores[:, None], labels[:, None]), dim=1
+        )
 
         if output[i] is None:
             output[i] = detections
@@ -138,17 +128,17 @@ def postprocess(cls_scores,
     for i in range(len(output)):
         res = output[i]
         if res is None or imgs is None:
-            boxlist = BoxList(torch.zeros(0, 4), (0, 0), mode='xyxy')
-            boxlist.add_field('objectness', 0)
-            boxlist.add_field('scores', 0)
-            boxlist.add_field('labels', -1)
+            boxlist = BoxList(torch.zeros(0, 4), (0, 0), mode="xyxy")
+            boxlist.add_field("objectness", 0)
+            boxlist.add_field("scores", 0)
+            boxlist.add_field("labels", -1)
 
         else:
             img_h, img_w = imgs.image_sizes[i]
-            boxlist = BoxList(res[:, :4], (img_w, img_h), mode='xyxy')
-            boxlist.add_field('objectness', res[:, 4])
-            boxlist.add_field('scores', res[:, 5])
-            boxlist.add_field('labels', res[:, 6] + 1)
+            boxlist = BoxList(res[:, :4], (img_w, img_h), mode="xyxy")
+            boxlist.add_field("objectness", res[:, 4])
+            boxlist.add_field("scores", res[:, 5])
+            boxlist.add_field("labels", res[:, 6] + 1)
         output[i] = boxlist
 
     return output

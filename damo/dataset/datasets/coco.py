@@ -17,12 +17,10 @@ class COCODataset(CocoDetection):
         self.ids = sorted(self.ids)
 
         self.json_category_id_to_contiguous_id = {
-            v: i + 1
-            for i, v in enumerate(self.coco.getCatIds())
+            v: i + 1 for i, v in enumerate(self.coco.getCatIds())
         }
         self.contiguous_category_id_to_json_id = {
-            v: k
-            for k, v in self.json_category_id_to_contiguous_id.items()
+            v: k for k, v in self.json_category_id_to_contiguous_id.items()
         }
         self.id_to_img_map = {k: v for k, v in enumerate(self.ids)}
         self._transforms = transforms
@@ -35,21 +33,21 @@ class COCODataset(CocoDetection):
         img, anno = super(COCODataset, self).__getitem__(idx)
         # filter crowd annotations
         # TODO might be better to add an extra field
-        anno = [obj for obj in anno if obj['iscrowd'] == 0]
+        anno = [obj for obj in anno if obj["iscrowd"] == 0]
 
-        boxes = [obj['bbox'] for obj in anno]
+        boxes = [obj["bbox"] for obj in anno]
         boxes = torch.as_tensor(boxes).reshape(-1, 4)  # guard against no boxes
-        target = BoxList(boxes, img.size, mode='xywh').convert('xyxy')
+        target = BoxList(boxes, img.size, mode="xywh").convert("xyxy")
 
-        classes = [obj['category_id'] for obj in anno]
+        classes = [obj["category_id"] for obj in anno]
         classes = [self.json_category_id_to_contiguous_id[c] for c in classes]
 
         classes = torch.tensor(classes)
-        target.add_field('labels', classes)
+        target.add_field("labels", classes)
 
-        if anno and 'keypoints' in anno[0]:
-            keypoints = [obj['keypoints'] for obj in anno]
-            target.add_field('keypoints', keypoints)
+        if anno and "keypoints" in anno[0]:
+            keypoints = [obj["keypoints"] for obj in anno]
+            target.add_field("keypoints", keypoints)
 
         target = target.clip_to_image(remove_empty=True)
 
@@ -65,28 +63,25 @@ class COCODataset(CocoDetection):
 
         # filter crowd annotations
         # TODO might be better to add an extra field
-        anno = [obj for obj in anno if obj['iscrowd'] == 0]
+        anno = [obj for obj in anno if obj["iscrowd"] == 0]
 
-        boxes = [obj['bbox'] for obj in anno]
+        boxes = [obj["bbox"] for obj in anno]
         boxes = torch.as_tensor(boxes).reshape(-1, 4)  # guard against no boxes
-        target = BoxList(boxes, img.size, mode='xywh').convert('xyxy')
+        target = BoxList(boxes, img.size, mode="xywh").convert("xyxy")
         target = target.clip_to_image(remove_empty=True)
 
-        classes = [obj['category_id'] for obj in anno]
+        classes = [obj["category_id"] for obj in anno]
         classes = [self.json_category_id_to_contiguous_id[c] for c in classes]
 
         obj_masks = []
         for obj in anno:
             obj_mask = []
-            if 'segmentation' in obj:
-                for mask in obj['segmentation']:
+            if "segmentation" in obj:
+                for mask in obj["segmentation"]:
                     obj_mask += mask
                 if len(obj_mask) > 0:
                     obj_masks.append(obj_mask)
-        seg_masks = [
-            np.array(obj_mask, dtype=np.float32).reshape(-1, 2)
-            for obj_mask in obj_masks
-        ]
+        seg_masks = [np.array(obj_mask, dtype=np.float32).reshape(-1, 2) for obj_mask in obj_masks]
 
         res = np.zeros((len(target.bbox), 5))
         for idx in range(len(target.bbox)):
@@ -99,8 +94,8 @@ class COCODataset(CocoDetection):
 
     def load_anno(self, idx):
         _, anno = super(COCODataset, self).__getitem__(idx)
-        anno = [obj for obj in anno if obj['iscrowd'] == 0]
-        classes = [obj['category_id'] for obj in anno]
+        anno = [obj for obj in anno if obj["iscrowd"] == 0]
+        classes = [obj["category_id"] for obj in anno]
         classes = [self.json_category_id_to_contiguous_id[c] for c in classes]
 
         return classes

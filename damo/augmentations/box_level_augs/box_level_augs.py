@@ -27,38 +27,37 @@ def _box_sample_prob(bbox, scale_ratios_splits, box_prob=0.3):
     return box_prob * scale_ratio
 
 
-def _box_aug_per_img(img,
-                     target,
-                     aug_type=None,
-                     scale_ratios=None,
-                     scale_splits=None,
-                     img_prob=0.1,
-                     box_prob=0.3,
-                     level=1):
+def _box_aug_per_img(
+    img,
+    target,
+    aug_type=None,
+    scale_ratios=None,
+    scale_splits=None,
+    img_prob=0.1,
+    box_prob=0.3,
+    level=1,
+):
     if random.random() > img_prob:
         return img, target
     img /= 255.0
 
-    tag = 'prob' if aug_type in geometric_aug_func else 'area'
+    tag = "prob" if aug_type in geometric_aug_func else "area"
     scale_ratios_splits = [scale_ratios[tag], scale_splits]
     if scale_ratios is None:
         box_sample_prob = [box_prob] * len(target.bbox)
     else:
         box_sample_prob = [
-            _box_sample_prob(bbox, scale_ratios_splits, box_prob=box_prob)
-            for bbox in target.bbox
+            _box_sample_prob(bbox, scale_ratios_splits, box_prob=box_prob) for bbox in target.bbox
         ]
 
     if aug_type in color_aug_func:
         img_aug = color_aug_func[aug_type](
-            img, level, target, [scale_ratios['area'], scale_splits],
-            box_sample_prob)
+            img, level, target, [scale_ratios["area"], scale_splits], box_sample_prob
+        )
     elif aug_type in geometric_aug_func:
-        img_aug, target = geometric_aug_func[aug_type](img, level, target,
-                                                       box_sample_prob)
+        img_aug, target = geometric_aug_func[aug_type](img, level, target, box_sample_prob)
     else:
-        raise ValueError('Unknown box-level augmentation function %s.' %
-                         (aug_type))
+        raise ValueError("Unknown box-level augmentation function %s." % (aug_type))
     out = img_aug * 255.0
 
     return out, target
@@ -69,8 +68,8 @@ class Box_augs(object):
         self.max_iters = max_iters
         self.box_prob = box_prob
         self.scale_splits = scale_splits
-        self.policies = box_augs_dict['policies']
-        self.scale_ratios = box_augs_dict['scale_ratios']
+        self.policies = box_augs_dict["policies"]
+        self.scale_ratios = box_augs_dict["scale_ratios"]
 
     def __call__(self, tensor, target, iteration):
         iter_ratio = float(iteration) / self.max_iters
@@ -81,23 +80,25 @@ class Box_augs(object):
 
         scale_splits = [area * ratio for area in self.scale_splits]
         if iter_ratio <= 1:
-            tensor, _ = _box_aug_per_img(tensor,
-                                         target,
-                                         aug_type=sub_policy[0][0],
-                                         scale_ratios=self.scale_ratios,
-                                         scale_splits=scale_splits,
-                                         img_prob=sub_policy[0][1] *
-                                         iter_ratio,
-                                         box_prob=self.box_prob,
-                                         level=sub_policy[0][2])
-            tensor, target = _box_aug_per_img(tensor,
-                                              target,
-                                              aug_type=sub_policy[1][0],
-                                              scale_ratios=self.scale_ratios,
-                                              scale_splits=scale_splits,
-                                              img_prob=sub_policy[1][1] *
-                                              iter_ratio,
-                                              box_prob=self.box_prob,
-                                              level=sub_policy[1][2])
+            tensor, _ = _box_aug_per_img(
+                tensor,
+                target,
+                aug_type=sub_policy[0][0],
+                scale_ratios=self.scale_ratios,
+                scale_splits=scale_splits,
+                img_prob=sub_policy[0][1] * iter_ratio,
+                box_prob=self.box_prob,
+                level=sub_policy[0][2],
+            )
+            tensor, target = _box_aug_per_img(
+                tensor,
+                target,
+                aug_type=sub_policy[1][0],
+                scale_ratios=self.scale_ratios,
+                scale_splits=scale_splits,
+                img_prob=sub_policy[1][1] * iter_ratio,
+                box_prob=self.box_prob,
+                level=sub_policy[1][2],
+            )
 
         return tensor, target

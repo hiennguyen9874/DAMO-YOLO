@@ -4,7 +4,7 @@ import collections
 
 import networkx as nx
 
-Node = collections.namedtuple('Node', ['id', 'inputs', 'type'])
+Node = collections.namedtuple("Node", ["id", "inputs", "type"])
 
 
 def get_graph_info(graph):
@@ -36,13 +36,13 @@ def nodeid_trans(id, cur_level, num_levels):
 
 
 def gen_log2n_graph_file(log2n_graph_file, depth_multiplier):
-    f = open(log2n_graph_file, 'w')
+    f = open(log2n_graph_file, "w")
     for i in range(depth_multiplier):
         for j in [1, 2, 4, 8, 16, 32]:
             if i - j < 0:
                 break
             else:
-                f.write('%d,%d\n' % (i - j, i))
+                f.write("%d,%d\n" % (i - j, i))
     f.close()
 
 
@@ -71,18 +71,20 @@ def get_dense_graph(depth_multiplier):
     return nodes, connections
 
 
-def giraffeneck_config(min_level,
-                       max_level,
-                       weight_method=None,
-                       depth_multiplier=5,
-                       with_backslash=False,
-                       with_slash=False,
-                       with_skip_connect=False,
-                       skip_connect_type='dense'):
+def giraffeneck_config(
+    min_level,
+    max_level,
+    weight_method=None,
+    depth_multiplier=5,
+    with_backslash=False,
+    with_slash=False,
+    with_skip_connect=False,
+    skip_connect_type="dense",
+):
     """Graph config with log2n merge and panet"""
-    if skip_connect_type == 'dense':
+    if skip_connect_type == "dense":
         nodes, connections = get_dense_graph(depth_multiplier)
-    elif skip_connect_type == 'log2n':
+    elif skip_connect_type == "log2n":
         nodes, connections = get_log2n_graph(depth_multiplier)
     graph = nx.Graph()
     graph.add_nodes_from(nodes)
@@ -91,7 +93,7 @@ def giraffeneck_config(min_level,
     drop_node = []
     nodes, input_nodes, output_nodes = get_graph_info(graph)
 
-    weight_method = weight_method or 'fastattn'
+    weight_method = weight_method or "fastattn"
 
     num_levels = max_level - min_level + 1
     node_ids = {min_level + i: [i] for i in range(num_levels)}
@@ -105,7 +107,7 @@ def giraffeneck_config(min_level,
         else:
             while new_id in drop_node:
                 if new_id in pnodes:
-                    for n in pnodes[new_id]['inputs_offsets']:
+                    for n in pnodes[new_id]["inputs_offsets"]:
                         if n not in input_offsets and n not in drop_node:
                             input_offsets.append(n)
                 new_id = new_id - 1
@@ -122,8 +124,7 @@ def giraffeneck_config(min_level,
             else:
                 if with_skip_connect:
                     for input_id in node.inputs:
-                        new_id = nodeid_trans(input_id, i - min_level,
-                                              num_levels)
+                        new_id = nodeid_trans(input_id, i - min_level, num_levels)
                         update_drop_node(new_id, input_offsets)
 
             # add top2down
@@ -137,14 +138,12 @@ def giraffeneck_config(min_level,
                     if mod == (num_levels - 1):
                         last = -1
                     else:
-                        last = (ind - 1) * num_levels + (num_levels - 1 - mod -
-                                                         1)
+                        last = (ind - 1) * num_levels + (num_levels - 1 - mod - 1)
                 else:  # odd
                     if mod == 0:
                         last = -1
                     else:
-                        last = (ind - 1) * num_levels + (num_levels - 1 - mod +
-                                                         1)
+                        last = (ind - 1) * num_levels + (num_levels - 1 - mod + 1)
 
                 return last
 
@@ -156,14 +155,12 @@ def giraffeneck_config(min_level,
                     if mod == (num_levels - 1):
                         last = -1
                     else:
-                        last = (ind - 1) * num_levels + (num_levels - 1 - mod -
-                                                         1)
+                        last = (ind - 1) * num_levels + (num_levels - 1 - mod - 1)
                 else:  # even
                     if mod == 0:
                         last = -1
                     else:
-                        last = (ind - 1) * num_levels + (num_levels - 1 - mod +
-                                                         1)
+                        last = (ind - 1) * num_levels + (num_levels - 1 - mod + 1)
 
                 return last
 
@@ -185,10 +182,10 @@ def giraffeneck_config(min_level,
                 input_offsets = []
 
             pnodes[new_id] = {
-                'reduction': 1 << i,
-                'inputs_offsets': input_offsets,
-                'weight_method': weight_method,
-                'is_out': 0,
+                "reduction": 1 << i,
+                "inputs_offsets": input_offsets,
+                "weight_method": weight_method,
+                "is_out": 0,
             }
 
         input_offsets = []
@@ -197,34 +194,37 @@ def giraffeneck_config(min_level,
             input_offsets.append(new_id)
 
         pnodes[node_ids[i][0] + num_levels * (len(nodes) + 1)] = {
-            'reduction': 1 << i,
-            'inputs_offsets': input_offsets,
-            'weight_method': weight_method,
-            'is_out': 1,
+            "reduction": 1 << i,
+            "inputs_offsets": input_offsets,
+            "weight_method": weight_method,
+            "is_out": 1,
         }
 
     pnodes = dict(sorted(pnodes.items(), key=lambda x: x[0]))
     return pnodes
 
 
-def get_graph_config(fpn_name,
-                     min_level=3,
-                     max_level=7,
-                     weight_method='concat',
-                     depth_multiplier=5,
-                     with_backslash=False,
-                     with_slash=False,
-                     with_skip_connect=False,
-                     skip_connect_type='dense'):
+def get_graph_config(
+    fpn_name,
+    min_level=3,
+    max_level=7,
+    weight_method="concat",
+    depth_multiplier=5,
+    with_backslash=False,
+    with_slash=False,
+    with_skip_connect=False,
+    skip_connect_type="dense",
+):
     name_to_config = {
-        'giraffeneck':
-        giraffeneck_config(min_level=min_level,
-                           max_level=max_level,
-                           weight_method=weight_method,
-                           depth_multiplier=depth_multiplier,
-                           with_backslash=with_backslash,
-                           with_slash=with_slash,
-                           with_skip_connect=with_skip_connect,
-                           skip_connect_type=skip_connect_type),
+        "giraffeneck": giraffeneck_config(
+            min_level=min_level,
+            max_level=max_level,
+            weight_method=weight_method,
+            depth_multiplier=depth_multiplier,
+            with_backslash=with_backslash,
+            with_slash=with_slash,
+            with_skip_connect=with_skip_connect,
+            skip_connect_type=skip_connect_type,
+        ),
     }
     return name_to_config[fpn_name]

@@ -35,6 +35,7 @@ class AssignResult(object):
         <AssignResult(num_gts=9, gt_inds.shape=(7,), max_overlaps.shape=(7,),
                       labels.shape=(7,))>
     """
+
     def __init__(self, num_gts, gt_inds, max_overlaps, labels=None):
         self.num_gts = num_gts
         self.gt_inds = gt_inds
@@ -61,11 +62,11 @@ class AssignResult(object):
     def info(self):
         """dict: a dictionary of info about the object"""
         basic_info = {
-            'num_gts': self.num_gts,
-            'num_preds': self.num_preds,
-            'gt_inds': self.gt_inds,
-            'max_overlaps': self.max_overlaps,
-            'labels': self.labels,
+            "num_gts": self.num_gts,
+            "num_preds": self.num_preds,
+            "gt_inds": self.gt_inds,
+            "max_overlaps": self.max_overlaps,
+            "labels": self.labels,
         }
         basic_info.update(self._extra_properties)
         return basic_info
@@ -90,14 +91,15 @@ class AssignResult(object):
             >>> print(self.info)
         """
         from mmdet.core.bbox import demodata
-        rng = demodata.ensure_rng(kwargs.get('rng', None))
 
-        num_gts = kwargs.get('num_gts', None)
-        num_preds = kwargs.get('num_preds', None)
-        p_ignore = kwargs.get('p_ignore', 0.3)
-        p_assigned = kwargs.get('p_assigned', 0.7)
-        p_use_label = kwargs.get('p_use_label', 0.5)
-        num_classes = kwargs.get('p_use_label', 3)
+        rng = demodata.ensure_rng(kwargs.get("rng", None))
+
+        num_gts = kwargs.get("num_gts", None)
+        num_preds = kwargs.get("num_preds", None)
+        p_ignore = kwargs.get("p_ignore", 0.3)
+        p_assigned = kwargs.get("p_assigned", 0.7)
+        p_use_label = kwargs.get("p_use_label", 0.5)
+        num_classes = kwargs.get("p_use_label", 3)
 
         if num_gts is None:
             num_gts = rng.randint(0, 8)
@@ -113,6 +115,7 @@ class AssignResult(object):
                 labels = None
         else:
             import numpy as np
+
             # Create an overlap for each predicted box
             max_overlaps = torch.from_numpy(rng.rand(num_preds))
 
@@ -129,8 +132,7 @@ class AssignResult(object):
             is_assigned[:] = 0
             is_assigned[assigned_idxs] = True
 
-            is_ignore = torch.from_numpy(
-                rng.rand(num_preds) < p_ignore) & is_assigned
+            is_ignore = torch.from_numpy(rng.rand(num_preds) < p_ignore) & is_assigned
 
             gt_inds = torch.zeros(num_preds, dtype=torch.int64)
 
@@ -139,8 +141,7 @@ class AssignResult(object):
             true_idxs = torch.from_numpy(true_idxs)
             gt_inds[is_assigned] = true_idxs[:n_assigned]
 
-            gt_inds = torch.from_numpy(
-                rng.randint(1, num_gts + 1, size=num_preds))
+            gt_inds = torch.from_numpy(rng.randint(1, num_gts + 1, size=num_preds))
             gt_inds[is_ignore] = -1
             gt_inds[~is_assigned] = 0
             max_overlaps[~is_assigned] = 0
@@ -153,7 +154,8 @@ class AssignResult(object):
                         # remind that we set FG labels to [0, num_class-1]
                         # since mmdet v2.0
                         # BG cat_id: num_class
-                        rng.randint(0, num_classes, size=num_preds))
+                        rng.randint(0, num_classes, size=num_preds)
+                    )
                     labels[~is_assigned] = 0
             else:
                 labels = None
@@ -166,14 +168,12 @@ class AssignResult(object):
         Args:
             gt_labels (torch.Tensor): Labels of gt boxes
         """
-        self_inds = torch.arange(1,
-                                 len(gt_labels) + 1,
-                                 dtype=torch.long,
-                                 device=gt_labels.device)
+        self_inds = torch.arange(1, len(gt_labels) + 1, dtype=torch.long, device=gt_labels.device)
         self.gt_inds = torch.cat([self_inds, self.gt_inds])
 
         self.max_overlaps = torch.cat(
-            [self.max_overlaps.new_ones(len(gt_labels)), self.max_overlaps])
+            [self.max_overlaps.new_ones(len(gt_labels)), self.max_overlaps]
+        )
 
         if self.labels is not None:
             self.labels = torch.cat([gt_labels, self.labels])
@@ -191,22 +191,15 @@ class ATSSAssigner:
     Args:
         topk (float): number of bbox selected in each level
     """
-    def __init__(self,
-                 topk,
-                 iou_calculator=dict(type='BboxOverlaps2D'),
-                 ignore_iof_thr=-1):
+
+    def __init__(self, topk, iou_calculator=dict(type="BboxOverlaps2D"), ignore_iof_thr=-1):
         self.topk = topk
         self.iou_calculator = BboxOverlaps2D()
         self.ignore_iof_thr = ignore_iof_thr
 
     # https://github.com/sfzhang15/ATSS/blob/master/atss_core/modeling/rpn/atss/loss.py
 
-    def assign(self,
-               bboxes,
-               num_level_bboxes,
-               gt_bboxes,
-               gt_bboxes_ignore=None,
-               gt_labels=None):
+    def assign(self, bboxes, num_level_bboxes, gt_bboxes, gt_bboxes_ignore=None, gt_labels=None):
         """Assign gt to bboxes.
 
         The assignment is done in following steps
@@ -242,26 +235,19 @@ class ATSSAssigner:
         overlaps = self.iou_calculator(bboxes, gt_bboxes)
 
         # assign 0 by default
-        assigned_gt_inds = overlaps.new_full((num_bboxes, ),
-                                             0,
-                                             dtype=torch.long)
+        assigned_gt_inds = overlaps.new_full((num_bboxes,), 0, dtype=torch.long)
 
         if num_gt == 0 or num_bboxes == 0:
             # No ground truth or boxes, return empty assignment
-            max_overlaps = overlaps.new_zeros((num_bboxes, ))
+            max_overlaps = overlaps.new_zeros((num_bboxes,))
             if num_gt == 0:
                 # No truth, assign everything to background
                 assigned_gt_inds[:] = 0
             if gt_labels is None:
                 assigned_labels = None
             else:
-                assigned_labels = overlaps.new_full((num_bboxes, ),
-                                                    -1,
-                                                    dtype=torch.long)
-            return AssignResult(num_gt,
-                                assigned_gt_inds,
-                                max_overlaps,
-                                labels=assigned_labels)
+                assigned_labels = overlaps.new_full((num_bboxes,), -1, dtype=torch.long)
+            return AssignResult(num_gt, assigned_gt_inds, max_overlaps, labels=assigned_labels)
 
         # compute center distance between all bbox and gt
         gt_cx = (gt_bboxes[:, 0] + gt_bboxes[:, 2]) / 2.0
@@ -272,14 +258,15 @@ class ATSSAssigner:
         bboxes_cy = (bboxes[:, 1] + bboxes[:, 3]) / 2.0
         bboxes_points = torch.stack((bboxes_cx, bboxes_cy), dim=1)
 
-        distances = (bboxes_points[:, None, :] -
-                     gt_points[None, :, :]).pow(2).sum(-1).sqrt()
+        distances = (bboxes_points[:, None, :] - gt_points[None, :, :]).pow(2).sum(-1).sqrt()
 
-        if (self.ignore_iof_thr > 0 and gt_bboxes_ignore is not None
-                and gt_bboxes_ignore.numel() > 0 and bboxes.numel() > 0):
-            ignore_overlaps = self.iou_calculator(bboxes,
-                                                  gt_bboxes_ignore,
-                                                  mode='iof')
+        if (
+            self.ignore_iof_thr > 0
+            and gt_bboxes_ignore is not None
+            and gt_bboxes_ignore.numel() > 0
+            and bboxes.numel() > 0
+        ):
+            ignore_overlaps = self.iou_calculator(bboxes, gt_bboxes_ignore, mode="iof")
             ignore_max_overlaps, _ = ignore_overlaps.max(dim=1)
             ignore_idxs = ignore_max_overlaps > self.ignore_iof_thr
             distances[ignore_idxs, :] = INF
@@ -294,9 +281,7 @@ class ATSSAssigner:
             end_idx = start_idx + bboxes_per_level
             distances_per_level = distances[start_idx:end_idx, :]
             selectable_k = min(self.topk, bboxes_per_level)
-            _, topk_idxs_per_level = distances_per_level.topk(selectable_k,
-                                                              dim=0,
-                                                              largest=False)
+            _, topk_idxs_per_level = distances_per_level.topk(selectable_k, dim=0, largest=False)
             candidate_idxs.append(topk_idxs_per_level + start_idx)
             start_idx = end_idx
         candidate_idxs = torch.cat(candidate_idxs, dim=0)
@@ -312,10 +297,8 @@ class ATSSAssigner:
         # limit the positive sample's center in gt
         for gt_idx in range(num_gt):
             candidate_idxs[:, gt_idx] += gt_idx * num_bboxes
-        ep_bboxes_cx = bboxes_cx.view(1, -1).expand(
-            num_gt, num_bboxes).contiguous().view(-1)
-        ep_bboxes_cy = bboxes_cy.view(1, -1).expand(
-            num_gt, num_bboxes).contiguous().view(-1)
+        ep_bboxes_cx = bboxes_cx.view(1, -1).expand(num_gt, num_bboxes).contiguous().view(-1)
+        ep_bboxes_cy = bboxes_cy.view(1, -1).expand(num_gt, num_bboxes).contiguous().view(-1)
         candidate_idxs = candidate_idxs.view(-1)
 
         # calculate the left, top, right, bottom distance between positive
@@ -329,25 +312,20 @@ class ATSSAssigner:
 
         # if an anchor box is assigned to multiple gts,
         # the one with the highest IoU will be selected.
-        overlaps_inf = torch.full_like(overlaps,
-                                       -INF).t().contiguous().view(-1)
+        overlaps_inf = torch.full_like(overlaps, -INF).t().contiguous().view(-1)
         index = candidate_idxs.view(-1)[is_pos.view(-1)]
         overlaps_inf[index] = overlaps.t().contiguous().view(-1)[index]
         overlaps_inf = overlaps_inf.view(num_gt, -1).t()
 
         max_overlaps, argmax_overlaps = overlaps_inf.max(dim=1)
-        assigned_gt_inds[
-            max_overlaps != -INF] = argmax_overlaps[max_overlaps != -INF] + 1
+        assigned_gt_inds[max_overlaps != -INF] = argmax_overlaps[max_overlaps != -INF] + 1
         if gt_labels is not None:
-            assigned_labels = assigned_gt_inds.new_full((num_bboxes, ), -1)
-            pos_inds = torch.nonzero(assigned_gt_inds > 0,
-                                     as_tuple=False).squeeze()
+            assigned_labels = assigned_gt_inds.new_full((num_bboxes,), -1)
+            pos_inds = torch.nonzero(assigned_gt_inds > 0, as_tuple=False).squeeze()
             if pos_inds.numel() > 0:
-                assigned_labels[pos_inds] = gt_labels[
-                    assigned_gt_inds[pos_inds] - 1].type(torch.int64)
+                assigned_labels[pos_inds] = gt_labels[assigned_gt_inds[pos_inds] - 1].type(
+                    torch.int64
+                )
         else:
             assigned_labels = None
-        return AssignResult(num_gt,
-                            assigned_gt_inds,
-                            max_overlaps,
-                            labels=assigned_labels)
+        return AssignResult(num_gt, assigned_gt_inds, max_overlaps, labels=assigned_labels)

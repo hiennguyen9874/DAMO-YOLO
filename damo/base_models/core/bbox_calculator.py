@@ -32,7 +32,7 @@ def batched_nms(boxes, scores, idxs, nms_cfg, class_agnostic=False):
         tuple: kept dets and indice.
     """
     nms_cfg_ = nms_cfg.copy()
-    class_agnostic = nms_cfg_.pop('class_agnostic', class_agnostic)
+    class_agnostic = nms_cfg_.pop("class_agnostic", class_agnostic)
     if class_agnostic:
         boxes_for_nms = boxes
     else:
@@ -40,10 +40,10 @@ def batched_nms(boxes, scores, idxs, nms_cfg, class_agnostic=False):
         offsets = idxs.to(boxes) * (max_coordinate + torch.tensor(1).to(boxes))
         boxes_for_nms = boxes + offsets[:, None]
 
-    nms_type = nms_cfg_.pop('type', 'nms')
+    nms_type = nms_cfg_.pop("type", "nms")
     nms_op = eval(nms_type)
 
-    split_thr = nms_cfg_.pop('split_thr', 10000)
+    split_thr = nms_cfg_.pop("split_thr", 10000)
     # Won't split to multiple nms nodes when exporting to onnx
     if boxes_for_nms.shape[0] < split_thr or torch.onnx.is_in_onnx_export():
         dets, keep = nms_op(boxes_for_nms, scores, **nms_cfg_)
@@ -55,7 +55,7 @@ def batched_nms(boxes, scores, idxs, nms_cfg, class_agnostic=False):
         # Some type of nms would reweight the score, such as SoftNMS
         scores = dets[:, 4]
     else:
-        max_num = nms_cfg_.pop('max_num', -1)
+        max_num = nms_cfg_.pop("max_num", -1)
         total_mask = scores.new_zeros(scores.size(), dtype=torch.bool)
         # Some type of nms would reweight the score, such as SoftNMS
         scores_after_nms = scores.new_zeros(scores.size())
@@ -78,12 +78,7 @@ def batched_nms(boxes, scores, idxs, nms_cfg, class_agnostic=False):
     return torch.cat([boxes, scores[:, None]], -1), keep
 
 
-def multiclass_nms(multi_bboxes,
-                   multi_scores,
-                   score_thr,
-                   nms_cfg,
-                   max_num=-1,
-                   score_factors=None):
+def multiclass_nms(multi_bboxes, multi_scores, score_thr, nms_cfg, max_num=-1, score_factors=None):
     """NMS for multi-class bboxes.
 
     Args:
@@ -107,8 +102,7 @@ def multiclass_nms(multi_bboxes,
     if multi_bboxes.shape[1] > 4:
         bboxes = multi_bboxes.view(multi_scores.size(0), -1, 4)
     else:
-        bboxes = multi_bboxes[:, None].expand(multi_scores.size(0),
-                                              num_classes, 4)
+        bboxes = multi_bboxes[:, None].expand(multi_scores.size(0), num_classes, 4)
     scores = multi_scores[:, :-1]
 
     # filter out boxes with low scores
@@ -119,9 +113,8 @@ def multiclass_nms(multi_bboxes,
     # (TODO): as ONNX does not support repeat now,
     # we have to use this ugly code
     bboxes = torch.masked_select(
-        bboxes,
-        torch.stack((valid_mask, valid_mask, valid_mask, valid_mask),
-                    -1)).view(-1, 4)
+        bboxes, torch.stack((valid_mask, valid_mask, valid_mask, valid_mask), -1)
+    ).view(-1, 4)
     if score_factors is not None:
         scores = scores * score_factors[:, None]
     scores = torch.masked_select(scores, valid_mask)
@@ -129,11 +122,12 @@ def multiclass_nms(multi_bboxes,
 
     if bboxes.numel() == 0:
         bboxes = multi_bboxes.new_zeros((0, 5))
-        labels = multi_bboxes.new_zeros((0, ), dtype=torch.long)
+        labels = multi_bboxes.new_zeros((0,), dtype=torch.long)
 
         if torch.onnx.is_in_onnx_export():
-            raise RuntimeError('[ONNX Error] Can not record NMS '
-                               'as it has not been executed this time')
+            raise RuntimeError(
+                "[ONNX Error] Can not record NMS " "as it has not been executed this time"
+            )
         return bboxes, labels
 
     dets, keep = batched_nms(bboxes, scores, labels, nms_cfg)
@@ -145,13 +139,7 @@ def multiclass_nms(multi_bboxes,
     return dets, labels[keep]
 
 
-def fast_nms(multi_bboxes,
-             multi_scores,
-             multi_coeffs,
-             score_thr,
-             iou_thr,
-             top_k,
-             max_num=-1):
+def fast_nms(multi_bboxes, multi_scores, multi_coeffs, score_thr, iou_thr, top_k, max_num=-1):
     """Fast NMS in `YOLACT <https://arxiv.org/abs/1904.02689>`_.
 
     Fast NMS allows already-removed detections to suppress other detections so
@@ -198,8 +186,7 @@ def fast_nms(multi_bboxes,
     keep *= scores > score_thr
 
     # Assign each kept detection to its corresponding class
-    classes = torch.arange(num_classes,
-                           device=boxes.device)[:, None].expand_as(keep)
+    classes = torch.arange(num_classes, device=boxes.device)[:, None].expand_as(keep)
     classes = classes[keep]
 
     boxes = boxes[keep]
@@ -222,7 +209,8 @@ def fast_nms(multi_bboxes,
 
 class BboxOverlaps2D(object):
     """2D Overlaps (e.g. IoUs, GIoUs) Calculator."""
-    def __call__(self, bboxes1, bboxes2, mode='iou', is_aligned=False):
+
+    def __call__(self, bboxes1, bboxes2, mode="iou", is_aligned=False):
         """Calculate IoU between 2D bboxes.
         Args:
             bboxes1 (Tensor): bboxes have shape (m, 4) in <x1, y1, x2, y2>
@@ -249,11 +237,11 @@ class BboxOverlaps2D(object):
 
     def __repr__(self):
         """str: a string describing the module"""
-        repr_str = self.__class__.__name__ + '()'
+        repr_str = self.__class__.__name__ + "()"
         return repr_str
 
 
-def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
+def bbox_overlaps(bboxes1, bboxes2, mode="iou", is_aligned=False, eps=1e-6):
     """Calculate overlap between two set of bboxes.
     If ``is_aligned `` is ``False``, then calculate the overlaps between each
     bbox of bboxes1 and bboxes2, otherwise the overlaps between each aligned
@@ -294,10 +282,10 @@ def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
         >>> assert tuple(bbox_overlaps(empty, empty).shape) == (0, 0)
     """
 
-    assert mode in ['iou', 'iof', 'giou'], f'Unsupported mode {mode}'
+    assert mode in ["iou", "iof", "giou"], f"Unsupported mode {mode}"
     # Either the boxes are empty or the length of boxes's last dimenstion is 4
-    assert (bboxes1.size(-1) == 4 or bboxes1.size(0) == 0)
-    assert (bboxes2.size(-1) == 4 or bboxes2.size(0) == 0)
+    assert bboxes1.size(-1) == 4 or bboxes1.size(0) == 0
+    assert bboxes2.size(-1) == 4 or bboxes2.size(0) == 0
 
     # Batch dim must be the same
     # Batch dim: (B1, B2, ... Bn)
@@ -311,14 +299,12 @@ def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
 
     if rows * cols == 0:
         if is_aligned:
-            return bboxes1.new(batch_shape + (rows, ))
+            return bboxes1.new(batch_shape + (rows,))
         else:
             return bboxes1.new(batch_shape + (rows, cols))
 
-    area1 = (bboxes1[..., 2] - bboxes1[..., 0]) * (bboxes1[..., 3] -
-                                                   bboxes1[..., 1])
-    area2 = (bboxes2[..., 2] - bboxes2[..., 0]) * (bboxes2[..., 3] -
-                                                   bboxes2[..., 1])
+    area1 = (bboxes1[..., 2] - bboxes1[..., 0]) * (bboxes1[..., 3] - bboxes1[..., 1])
+    area2 = (bboxes2[..., 2] - bboxes2[..., 0]) * (bboxes2[..., 3] - bboxes2[..., 1])
 
     if is_aligned:
         lt = torch.max(bboxes1[..., :2], bboxes2[..., :2])  # [B, rows, 2]
@@ -327,36 +313,32 @@ def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
         wh = (rb - lt).clamp(min=0)  # [B, rows, 2]
         overlap = wh[..., 0] * wh[..., 1]
 
-        if mode in ['iou', 'giou']:
+        if mode in ["iou", "giou"]:
             union = area1 + area2 - overlap
         else:
             union = area1
-        if mode == 'giou':
+        if mode == "giou":
             enclosed_lt = torch.min(bboxes1[..., :2], bboxes2[..., :2])
             enclosed_rb = torch.max(bboxes1[..., 2:], bboxes2[..., 2:])
     else:
-        lt = torch.max(bboxes1[..., :, None, :2],
-                       bboxes2[..., None, :, :2])  # [B, rows, cols, 2]
-        rb = torch.min(bboxes1[..., :, None, 2:],
-                       bboxes2[..., None, :, 2:])  # [B, rows, cols, 2]
+        lt = torch.max(bboxes1[..., :, None, :2], bboxes2[..., None, :, :2])  # [B, rows, cols, 2]
+        rb = torch.min(bboxes1[..., :, None, 2:], bboxes2[..., None, :, 2:])  # [B, rows, cols, 2]
 
         wh = (rb - lt).clamp(min=0)  # [B, rows, cols, 2]
         overlap = wh[..., 0] * wh[..., 1]
 
-        if mode in ['iou', 'giou']:
+        if mode in ["iou", "giou"]:
             union = area1[..., None] + area2[..., None, :] - overlap
         else:
             union = area1[..., None]
-        if mode == 'giou':
-            enclosed_lt = torch.min(bboxes1[..., :, None, :2],
-                                    bboxes2[..., None, :, :2])
-            enclosed_rb = torch.max(bboxes1[..., :, None, 2:],
-                                    bboxes2[..., None, :, 2:])
+        if mode == "giou":
+            enclosed_lt = torch.min(bboxes1[..., :, None, :2], bboxes2[..., None, :, :2])
+            enclosed_rb = torch.max(bboxes1[..., :, None, 2:], bboxes2[..., None, :, 2:])
 
     eps = union.new_tensor([eps])
     union = torch.max(union, eps)
     ious = overlap / union
-    if mode in ['iou', 'iof']:
+    if mode in ["iou", "iof"]:
         return ious
     # calculate gious
     enclose_wh = (enclosed_rb - enclosed_lt).clamp(min=0)

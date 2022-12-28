@@ -9,19 +9,20 @@ import numpy as np
 import torch
 
 __all__ = [
-    'AverageMeter',
-    'MeterBuffer',
-    'get_total_and_free_memory_in_Mb',
-    'gpu_mem_usage',
+    "AverageMeter",
+    "MeterBuffer",
+    "get_total_and_free_memory_in_Mb",
+    "gpu_mem_usage",
 ]
 
 
 def get_total_and_free_memory_in_Mb(cuda_device):
     devices_info_str = os.popen(
-        'nvidia-smi --query-gpu=memory.total,memory.used \
-         --format=csv,nounits,noheader')
-    devices_info = devices_info_str.read().strip().split('\n')
-    total, used = devices_info[int(cuda_device)].split(',')
+        "nvidia-smi --query-gpu=memory.total,memory.used \
+         --format=csv,nounits,noheader"
+    )
+    devices_info = devices_info_str.read().strip().split("\n")
+    total, used = devices_info[int(cuda_device)].split(",")
     return int(total), int(used)
 
 
@@ -37,6 +38,7 @@ class AverageMeter:
     """Track a series of values and provide access to smoothed values over a
     window or the global series average.
     """
+
     def __init__(self, window_size=50):
         self._deque = deque(maxlen=window_size)
         self._total = 0.0
@@ -81,6 +83,7 @@ class AverageMeter:
 
 class MeterBuffer(defaultdict):
     """Computes and stores the average and current value"""
+
     def __init__(self, window_size=20):
         factory = functools.partial(AverageMeter, window_size=window_size)
         super().__init__(factory)
@@ -89,7 +92,7 @@ class MeterBuffer(defaultdict):
         for v in self.values():
             v.reset()
 
-    def get_filtered_meter(self, filter_key='time'):
+    def get_filtered_meter(self, filter_key="time"):
         return {k: v for k, v in self.items() if filter_key in k}
 
     def update(self, values=None, **kwargs):

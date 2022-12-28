@@ -19,29 +19,29 @@ from loguru import logger
 from torch import distributed as dist
 
 __all__ = [
-    'get_num_devices',
-    'wait_for_the_master',
-    'is_main_process',
-    'synchronize',
-    'get_world_size',
-    'get_rank',
-    'get_local_rank',
-    'get_local_size',
-    'time_synchronized',
-    'gather',
-    'all_gather',
+    "get_num_devices",
+    "wait_for_the_master",
+    "is_main_process",
+    "synchronize",
+    "get_world_size",
+    "get_rank",
+    "get_local_rank",
+    "get_local_size",
+    "time_synchronized",
+    "gather",
+    "all_gather",
 ]
 
 _LOCAL_PROCESS_GROUP = None
 
 
 def get_num_devices():
-    gpu_list = os.getenv('CUDA_VISIBLE_DEVICES', None)
+    gpu_list = os.getenv("CUDA_VISIBLE_DEVICES", None)
     if gpu_list is not None:
-        return len(gpu_list.split(','))
+        return len(gpu_list.split(","))
     else:
-        devices_list_info = os.popen('nvidia-smi -L')
-        devices_list_info = devices_list_info.read().strip().split('\n')
+        devices_list_info = os.popen("nvidia-smi -L")
+        devices_list_info = devices_list_info.read().strip().split("\n")
         return len(devices_list_info)
 
 
@@ -130,23 +130,24 @@ def _get_global_gloo_group():
     Return a process group based on gloo backend, containing all the ranks
     The result is cached.
     """
-    if dist.get_backend() == 'nccl':
-        return dist.new_group(backend='gloo')
+    if dist.get_backend() == "nccl":
+        return dist.new_group(backend="gloo")
     else:
         return dist.group.WORLD
 
 
 def _serialize_to_tensor(data, group):
     backend = dist.get_backend(group)
-    assert backend in ['gloo', 'nccl']
-    device = torch.device('cpu' if backend == 'gloo' else 'cuda')
+    assert backend in ["gloo", "nccl"]
+    device = torch.device("cpu" if backend == "gloo" else "cuda")
 
     buffer = pickle.dumps(data)
     if len(buffer) > 1024**3:
         logger.warning(
-            'Rank {} trying to all-gather {:.2f} GB of data on device {}'.
-            format(get_rank(),
-                   len(buffer) / (1024**3), device))
+            "Rank {} trying to all-gather {:.2f} GB of data on device {}".format(
+                get_rank(), len(buffer) / (1024**3), device
+            )
+        )
     storage = torch.ByteStorage.from_buffer(buffer)
     tensor = torch.ByteTensor(storage).to(device=device)
     return tensor
@@ -159,15 +160,10 @@ def _pad_to_largest_tensor(tensor, group):
         Tensor: padded tensor that has the max size
     """
     world_size = dist.get_world_size(group=group)
-    assert (
-        world_size >= 1
-    ), 'comm.gather/all_gather must be called from ranks within the group!'
-    local_size = torch.tensor([tensor.numel()],
-                              dtype=torch.int64,
-                              device=tensor.device)
+    assert world_size >= 1, "comm.gather/all_gather must be called from ranks within the group!"
+    local_size = torch.tensor([tensor.numel()], dtype=torch.int64, device=tensor.device)
     size_list = [
-        torch.zeros([1], dtype=torch.int64, device=tensor.device)
-        for _ in range(world_size)
+        torch.zeros([1], dtype=torch.int64, device=tensor.device) for _ in range(world_size)
     ]
     dist.all_gather(size_list, local_size, group=group)
     size_list = [int(size.item()) for size in size_list]
@@ -177,9 +173,7 @@ def _pad_to_largest_tensor(tensor, group):
     # we pad the tensor because torch all_gather does not support
     # gathering tensors of different shapes
     if local_size != max_size:
-        padding = torch.zeros((max_size - local_size, ),
-                              dtype=torch.uint8,
-                              device=tensor.device)
+        padding = torch.zeros((max_size - local_size,), dtype=torch.uint8, device=tensor.device)
         tensor = torch.cat((tensor, padding), dim=0)
     return size_list, tensor
 
@@ -208,8 +202,7 @@ def all_gather(data, group=None):
 
     # receiving Tensor from all ranks
     tensor_list = [
-        torch.empty((max_size, ), dtype=torch.uint8, device=tensor.device)
-        for _ in size_list
+        torch.empty((max_size,), dtype=torch.uint8, device=tensor.device) for _ in size_list
     ]
     dist.all_gather(tensor_list, tensor, group=group)
 
@@ -248,8 +241,7 @@ def gather(data, dst=0, group=None):
     if rank == dst:
         max_size = max(size_list)
         tensor_list = [
-            torch.empty((max_size, ), dtype=torch.uint8, device=tensor.device)
-            for _ in size_list
+            torch.empty((max_size,), dtype=torch.uint8, device=tensor.device) for _ in size_list
         ]
         dist.gather(tensor, tensor_list, dst=dst, group=group)
 

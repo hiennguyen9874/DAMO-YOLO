@@ -11,7 +11,7 @@ def remove_small_boxes(boxlist, min_size):
         boxlist (Boxlist)
         min_size (int)
     """
-    xywh_boxes = boxlist.convert('xywh').bbox
+    xywh_boxes = boxlist.convert("xywh").bbox
     _, _, ws, hs = xywh_boxes.unbind(dim=1)
     keep = ((ws >= min_size) & (hs >= min_size)).nonzero().squeeze(1)
     return boxlist[keep]
@@ -30,8 +30,8 @@ def boxlist_iou(boxlist1, boxlist2):
     """
     if boxlist1.size != boxlist2.size:
         raise RuntimeError(
-            'boxlists should have same image size, got {}, {}'.format(
-                boxlist1, boxlist2))
+            "boxlists should have same image size, got {}, {}".format(boxlist1, boxlist2)
+        )
 
     area1 = boxlist1.area()
     area2 = boxlist2.area()
@@ -80,8 +80,7 @@ def cat_boxlist(bboxes):
     fields = set(bboxes[0].fields())
     assert all(set(bbox.fields()) == fields for bbox in bboxes)
 
-    cat_boxes = BoxList(_cat([bbox.bbox for bbox in bboxes], dim=0), size,
-                        mode)
+    cat_boxes = BoxList(_cat([bbox.bbox for bbox in bboxes], dim=0), size, mode)
 
     for field in fields:
         data = _cat([bbox.get_field(field) for bbox in bboxes], dim=0)

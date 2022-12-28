@@ -38,12 +38,12 @@ class Detector(nn.Module):
 
     def load_pretrain_detector(self, pretrain_model):
 
-        state_dict = torch.load(pretrain_model, map_location='cpu')['model']
-        logger.info(f'Finetune from {pretrain_model}................')
+        state_dict = torch.load(pretrain_model, map_location="cpu")["model"]
+        logger.info(f"Finetune from {pretrain_model}................")
         new_state_dict = {}
         for k, v in self.state_dict().items():
-            k = k.replace('module.', '')
-            if 'head' in k:
+            k = k.replace("module.", "")
+            if "head" in k:
                 new_state_dict[k] = self.state_dict()[k]
                 continue
             new_state_dict[k] = state_dict[k]
@@ -78,10 +78,12 @@ def build_local_model(config, device):
 
 
 def build_ddp_model(model, local_rank):
-    model = DDP(model,
-                device_ids=[local_rank],
-                output_device=local_rank,
-                broadcast_buffers=False,
-                find_unused_parameters=True)
+    model = DDP(
+        model,
+        device_ids=[local_rank],
+        output_device=local_rank,
+        broadcast_buffers=False,
+        find_unused_parameters=True,
+    )
 
     return model

@@ -10,6 +10,7 @@ from .bbox_calculator import bbox_overlaps
 
 class BaseAssigner(object):
     """Base assigner that assigns boxes to ground truth boxes."""
+
     def assign(self, bboxes, gt_bboxes, gt_bboxes_ignore=None, gt_labels=None):
         """Assign boxes to either a ground truth boxes or a negative boxes."""
 
@@ -44,6 +45,7 @@ class AssignResult(object):
         <AssignResult(num_gts=9, gt_inds.shape=(7,), max_overlaps.shape=(7,),
                       labels.shape=(7,))>
     """
+
     def __init__(self, num_gts, gt_inds, max_overlaps, labels=None):
         self.num_gts = num_gts
         self.gt_inds = gt_inds
@@ -70,11 +72,11 @@ class AssignResult(object):
     def info(self):
         """dict: a dictionary of info about the object"""
         basic_info = {
-            'num_gts': self.num_gts,
-            'num_preds': self.num_preds,
-            'gt_inds': self.gt_inds,
-            'max_overlaps': self.max_overlaps,
-            'labels': self.labels,
+            "num_gts": self.num_gts,
+            "num_preds": self.num_preds,
+            "gt_inds": self.gt_inds,
+            "max_overlaps": self.max_overlaps,
+            "labels": self.labels,
         }
         basic_info.update(self._extra_properties)
         return basic_info
@@ -99,14 +101,15 @@ class AssignResult(object):
             >>> print(self.info)
         """
         from mmdet.core.bbox import demodata
-        rng = demodata.ensure_rng(kwargs.get('rng', None))
 
-        num_gts = kwargs.get('num_gts', None)
-        num_preds = kwargs.get('num_preds', None)
-        p_ignore = kwargs.get('p_ignore', 0.3)
-        p_assigned = kwargs.get('p_assigned', 0.7)
-        p_use_label = kwargs.get('p_use_label', 0.5)
-        num_classes = kwargs.get('p_use_label', 3)
+        rng = demodata.ensure_rng(kwargs.get("rng", None))
+
+        num_gts = kwargs.get("num_gts", None)
+        num_preds = kwargs.get("num_preds", None)
+        p_ignore = kwargs.get("p_ignore", 0.3)
+        p_assigned = kwargs.get("p_assigned", 0.7)
+        p_use_label = kwargs.get("p_use_label", 0.5)
+        num_classes = kwargs.get("p_use_label", 3)
 
         if num_gts is None:
             num_gts = rng.randint(0, 8)
@@ -122,6 +125,7 @@ class AssignResult(object):
                 labels = None
         else:
             import numpy as np
+
             # Create an overlap for each predicted box
             max_overlaps = torch.from_numpy(rng.rand(num_preds))
 
@@ -138,8 +142,7 @@ class AssignResult(object):
             is_assigned[:] = 0
             is_assigned[assigned_idxs] = True
 
-            is_ignore = torch.from_numpy(
-                rng.rand(num_preds) < p_ignore) & is_assigned
+            is_ignore = torch.from_numpy(rng.rand(num_preds) < p_ignore) & is_assigned
 
             gt_inds = torch.zeros(num_preds, dtype=torch.int64)
 
@@ -148,8 +151,7 @@ class AssignResult(object):
             true_idxs = torch.from_numpy(true_idxs)
             gt_inds[is_assigned] = true_idxs[:n_assigned]
 
-            gt_inds = torch.from_numpy(
-                rng.randint(1, num_gts + 1, size=num_preds))
+            gt_inds = torch.from_numpy(rng.randint(1, num_gts + 1, size=num_preds))
             gt_inds[is_ignore] = -1
             gt_inds[~is_assigned] = 0
             max_overlaps[~is_assigned] = 0
@@ -162,7 +164,8 @@ class AssignResult(object):
                         # remind that we set FG labels to [0, num_class-1]
                         # since mmdet v2.0
                         # BG cat_id: num_class
-                        rng.randint(0, num_classes, size=num_preds))
+                        rng.randint(0, num_classes, size=num_preds)
+                    )
                     labels[~is_assigned] = 0
             else:
                 labels = None
@@ -175,14 +178,12 @@ class AssignResult(object):
         Args:
             gt_labels (torch.Tensor): Labels of gt boxes
         """
-        self_inds = torch.arange(1,
-                                 len(gt_labels) + 1,
-                                 dtype=torch.long,
-                                 device=gt_labels.device)
+        self_inds = torch.arange(1, len(gt_labels) + 1, dtype=torch.long, device=gt_labels.device)
         self.gt_inds = torch.cat([self_inds, self.gt_inds])
 
         self.max_overlaps = torch.cat(
-            [self.max_overlaps.new_ones(len(gt_labels)), self.max_overlaps])
+            [self.max_overlaps.new_ones(len(gt_labels)), self.max_overlaps]
+        )
 
         if self.labels is not None:
             self.labels = torch.cat([gt_labels, self.labels])
@@ -200,24 +201,23 @@ class AlignOTAAssigner(BaseAssigner):
         cls_weight (int | float, optional): The scale factor for classification
             cost. Default 1.0.
     """
-    def __init__(self,
-                 center_radius=2.5,
-                 candidate_topk=10,
-                 iou_weight=3.0,
-                 cls_weight=1.0):
+
+    def __init__(self, center_radius=2.5, candidate_topk=10, iou_weight=3.0, cls_weight=1.0):
         self.center_radius = center_radius
         self.candidate_topk = candidate_topk
         self.iou_weight = iou_weight
         self.cls_weight = cls_weight
 
-    def assign(self,
-               pred_scores,
-               priors,
-               decoded_bboxes,
-               gt_bboxes,
-               gt_labels,
-               gt_bboxes_ignore=None,
-               eps=1e-7):
+    def assign(
+        self,
+        pred_scores,
+        priors,
+        decoded_bboxes,
+        gt_bboxes,
+        gt_labels,
+        gt_bboxes_ignore=None,
+        eps=1e-7,
+    ):
         """Assign gt to priors using SimOTA. It will switch to CPU mode when
         GPU is out of memory.
         Args:
@@ -239,16 +239,18 @@ class AlignOTAAssigner(BaseAssigner):
             assign_result (obj:`AssignResult`): The assigned result.
         """
         try:
-            assign_result = self._assign(pred_scores, priors, decoded_bboxes,
-                                         gt_bboxes, gt_labels,
-                                         gt_bboxes_ignore, eps)
+            assign_result = self._assign(
+                pred_scores, priors, decoded_bboxes, gt_bboxes, gt_labels, gt_bboxes_ignore, eps
+            )
             return assign_result
         except RuntimeError:
             origin_device = pred_scores.device
-            warnings.warn('OOM RuntimeError is raised due to the huge memory '
-                          'cost during label assignment. CPU mode is applied '
-                          'in this batch. If you want to avoid this issue, '
-                          'try to reduce the batch size or image size.')
+            warnings.warn(
+                "OOM RuntimeError is raised due to the huge memory "
+                "cost during label assignment. CPU mode is applied "
+                "in this batch. If you want to avoid this issue, "
+                "try to reduce the batch size or image size."
+            )
             torch.cuda.empty_cache()
 
             pred_scores = pred_scores.cpu()
@@ -257,24 +259,25 @@ class AlignOTAAssigner(BaseAssigner):
             gt_bboxes = gt_bboxes.cpu().float()
             gt_labels = gt_labels.cpu()
 
-            assign_result = self._assign(pred_scores, priors, decoded_bboxes,
-                                         gt_bboxes, gt_labels,
-                                         gt_bboxes_ignore, eps)
+            assign_result = self._assign(
+                pred_scores, priors, decoded_bboxes, gt_bboxes, gt_labels, gt_bboxes_ignore, eps
+            )
             assign_result.gt_inds = assign_result.gt_inds.to(origin_device)
-            assign_result.max_overlaps = assign_result.max_overlaps.to(
-                origin_device)
+            assign_result.max_overlaps = assign_result.max_overlaps.to(origin_device)
             assign_result.labels = assign_result.labels.to(origin_device)
 
             return assign_result
 
-    def _assign(self,
-                pred_scores,
-                priors,
-                decoded_bboxes,
-                gt_bboxes,
-                gt_labels,
-                gt_bboxes_ignore=None,
-                eps=1e-7):
+    def _assign(
+        self,
+        pred_scores,
+        priors,
+        decoded_bboxes,
+        gt_bboxes,
+        gt_labels,
+        gt_bboxes_ignore=None,
+        eps=1e-7,
+    ):
         """Assign gt to priors using SimOTA.
         Args:
             pred_scores (Tensor): Classification scores of one image,
@@ -299,38 +302,33 @@ class AlignOTAAssigner(BaseAssigner):
         num_bboxes = decoded_bboxes.size(0)
 
         # assign 0 by default
-        assigned_gt_inds = decoded_bboxes.new_full((num_bboxes, ),
-                                                   0,
-                                                   dtype=torch.long)
-        valid_mask, is_in_boxes_and_center = self.get_in_gt_and_in_center_info(
-            priors, gt_bboxes)
+        assigned_gt_inds = decoded_bboxes.new_full((num_bboxes,), 0, dtype=torch.long)
+        valid_mask, is_in_boxes_and_center = self.get_in_gt_and_in_center_info(priors, gt_bboxes)
         valid_decoded_bbox = decoded_bboxes[valid_mask]
         valid_pred_scores = pred_scores[valid_mask]
         num_valid = valid_decoded_bbox.size(0)
 
         if num_gt == 0 or num_bboxes == 0 or num_valid == 0:
             # No ground truth or boxes, return empty assignment
-            max_overlaps = decoded_bboxes.new_zeros((num_bboxes, ))
+            max_overlaps = decoded_bboxes.new_zeros((num_bboxes,))
             if num_gt == 0:
                 # No truth, assign everything to background
                 assigned_gt_inds[:] = 0
             if gt_labels is None:
                 assigned_labels = None
             else:
-                assigned_labels = decoded_bboxes.new_full((num_bboxes, ),
-                                                          -1,
-                                                          dtype=torch.long)
-            return AssignResult(num_gt,
-                                assigned_gt_inds,
-                                max_overlaps,
-                                labels=assigned_labels)
+                assigned_labels = decoded_bboxes.new_full((num_bboxes,), -1, dtype=torch.long)
+            return AssignResult(num_gt, assigned_gt_inds, max_overlaps, labels=assigned_labels)
 
         pairwise_ious = bbox_overlaps(valid_decoded_bbox, gt_bboxes)
         iou_cost = -torch.log(pairwise_ious + eps)
 
-        gt_onehot_label = (F.one_hot(gt_labels.to(
-            torch.int64), pred_scores.shape[-1]).float().unsqueeze(0).repeat(
-                num_valid, 1, 1))
+        gt_onehot_label = (
+            F.one_hot(gt_labels.to(torch.int64), pred_scores.shape[-1])
+            .float()
+            .unsqueeze(0)
+            .repeat(num_valid, 1, 1)
+        )
 
         valid_pred_scores = valid_pred_scores.unsqueeze(1).repeat(1, num_gt, 1)
 
@@ -338,29 +336,26 @@ class AlignOTAAssigner(BaseAssigner):
         scale_factor = soft_label - valid_pred_scores
 
         cls_cost = F.binary_cross_entropy(
-            valid_pred_scores, soft_label,
-            reduction='none') * scale_factor.abs().pow(2.0)
+            valid_pred_scores, soft_label, reduction="none"
+        ) * scale_factor.abs().pow(2.0)
 
         cls_cost = cls_cost.sum(dim=-1)
-        cost_matrix = (cls_cost * self.cls_weight +
-                       iou_cost * self.iou_weight +
-                       (~is_in_boxes_and_center) * INF)
-        matched_pred_ious, matched_gt_inds = \
-            self.dynamic_k_matching(
-                cost_matrix, pairwise_ious, num_gt, valid_mask)
+        cost_matrix = (
+            cls_cost * self.cls_weight
+            + iou_cost * self.iou_weight
+            + (~is_in_boxes_and_center) * INF
+        )
+        matched_pred_ious, matched_gt_inds = self.dynamic_k_matching(
+            cost_matrix, pairwise_ious, num_gt, valid_mask
+        )
 
         # convert to AssignResult format
         assigned_gt_inds[valid_mask] = matched_gt_inds + 1
-        assigned_labels = assigned_gt_inds.new_full((num_bboxes, ), -1)
+        assigned_labels = assigned_gt_inds.new_full((num_bboxes,), -1)
         assigned_labels[valid_mask] = gt_labels[matched_gt_inds].long()
-        max_overlaps = assigned_gt_inds.new_full((num_bboxes, ),
-                                                 -INF,
-                                                 dtype=torch.float32)
+        max_overlaps = assigned_gt_inds.new_full((num_bboxes,), -INF, dtype=torch.float32)
         max_overlaps[valid_mask] = matched_pred_ious
-        return AssignResult(num_gt,
-                            assigned_gt_inds,
-                            max_overlaps,
-                            labels=assigned_labels)
+        return AssignResult(num_gt, assigned_gt_inds, max_overlaps, labels=assigned_labels)
 
     def get_in_gt_and_in_center_info(self, priors, gt_bboxes):
         num_gt = gt_bboxes.size(0)
@@ -401,8 +396,9 @@ class AlignOTAAssigner(BaseAssigner):
         is_in_gts_or_centers = is_in_gts_all | is_in_cts_all
 
         # both in boxes and centers, shape: [num_fg, num_gt]
-        is_in_boxes_and_centers = (is_in_gts[is_in_gts_or_centers, :]
-                                   & is_in_cts[is_in_gts_or_centers, :])
+        is_in_boxes_and_centers = (
+            is_in_gts[is_in_gts_or_centers, :] & is_in_cts[is_in_gts_or_centers, :]
+        )
         return is_in_gts_or_centers, is_in_boxes_and_centers
 
     def dynamic_k_matching(self, cost, pairwise_ious, num_gt, valid_mask):
@@ -413,17 +409,14 @@ class AlignOTAAssigner(BaseAssigner):
         # calculate dynamic k for each gt
         dynamic_ks = torch.clamp(topk_ious.sum(0).int(), min=1)
         for gt_idx in range(num_gt):
-            _, pos_idx = torch.topk(cost[:, gt_idx],
-                                    k=dynamic_ks[gt_idx].item(),
-                                    largest=False)
+            _, pos_idx = torch.topk(cost[:, gt_idx], k=dynamic_ks[gt_idx].item(), largest=False)
             matching_matrix[:, gt_idx][pos_idx] = 1.0
 
         del topk_ious, dynamic_ks, pos_idx
 
         prior_match_gt_mask = matching_matrix.sum(1) > 1
         if prior_match_gt_mask.sum() > 0:
-            cost_min, cost_argmin = torch.min(cost[prior_match_gt_mask, :],
-                                              dim=1)
+            cost_min, cost_argmin = torch.min(cost[prior_match_gt_mask, :], dim=1)
             matching_matrix[prior_match_gt_mask, :] *= 0.0
             matching_matrix[prior_match_gt_mask, cost_argmin] = 1.0
         # get foreground mask inside box and center prior
@@ -431,6 +424,5 @@ class AlignOTAAssigner(BaseAssigner):
         valid_mask[valid_mask.clone()] = fg_mask_inboxes
 
         matched_gt_inds = matching_matrix[fg_mask_inboxes, :].argmax(1)
-        matched_pred_ious = (matching_matrix *
-                             pairwise_ious).sum(1)[fg_mask_inboxes]
+        matched_pred_ious = (matching_matrix * pairwise_ious).sum(1)[fg_mask_inboxes]
         return matched_pred_ious, matched_gt_inds
