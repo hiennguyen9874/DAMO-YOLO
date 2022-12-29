@@ -10,6 +10,11 @@ import torch
 from loguru import logger
 from PIL import Image
 
+
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+
 from damo.base_models.core.ops import RepConv
 from damo.config.base import parse_config
 from damo.detectors.detector import build_local_model

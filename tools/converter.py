@@ -8,6 +8,10 @@ import torch
 from loguru import logger
 from torch import nn
 
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+
 from damo.base_models.core.end2end import End2End
 from damo.base_models.core.ops import RepConv, SiLU
 from damo.config.base import parse_config
@@ -36,11 +40,16 @@ def make_parser():
         "--output", default="output", type=str, help="output node name of onnx model"
     )
     parser.add_argument("-o", "--opset", default=11, type=int, help="onnx opset version")
-    parser.add_argument("--trt-version", type=int, default=7, help="tensorrt version")
+    parser.add_argument("--trt-version", type=int, default=8, help="tensorrt version")
     parser.add_argument("--end2end", action="store_true", help="export end2end onnx")
     parser.add_argument("--ort", action="store_true", help="export onnx for onnxruntime")
     parser.add_argument("--trt_eval", action="store_true", help="trt evaluation")
     parser.add_argument("--device", default="0", help="cuda device, i.e. 0 or 0,1,2,3 or cpu")
+    parser.add_argument("--topk-all", default=100, type=int, help="topk")
+    parser.add_argument("--iou-thres", default=0.65, type=float, help="iou threshold")
+    parser.add_argument("--conf-thres", default=0.25, type=float, help="conf threshold")
+    parser.add_argument("--with-preprocess", action="store_true", help="with preprocess")
+    parser.add_argument("--concat", action="store_true", help="concat box and score to one output")
 
     return parser
 
@@ -130,6 +139,9 @@ def main():
     logger.info(info)
     # decouple postprocess
     model.head.nms = False
+
+    if not args.end2end and args.concat:
+        model.head.concat = True
 
     if args.end2end:
         model = End2End(

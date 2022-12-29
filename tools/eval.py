@@ -7,6 +7,10 @@ import os
 import torch
 from loguru import logger
 
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+
 from damo.base_models.core.ops import RepConv
 from damo.apis.detector_inference import inference
 from damo.config.base import parse_config

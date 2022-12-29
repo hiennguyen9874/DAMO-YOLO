@@ -65,6 +65,8 @@ class ZeroHead(nn.Module):
     Estimation for Dense Object Detection.
     """
 
+    concat = False
+
     def __init__(
         self,
         num_classes,
@@ -272,6 +274,8 @@ class ZeroHead(nn.Module):
                 imgs,
             )
             return output
+        elif self.concat:
+            return torch.cat((bbox_preds, cls_scores), dim=2)
         return cls_scores, bbox_preds
 
     def forward_single(self, x, cls_convs, reg_convs, gfl_cls, gfl_reg, scale):
